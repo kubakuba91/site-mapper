@@ -57,7 +57,10 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
     >
       {side === "new" && target}
       <div className="relative z-10 min-w-0 flex-1 px-4 py-3.5">
-        <div className="mb-1 truncate font-mono text-[13px] font-semibold text-[#14161A]">{page.path}</div>
+        <div className="mb-1 flex min-w-0 items-center gap-1.5">
+          <div className="truncate font-mono text-[13px] font-semibold text-[#14161A]">{page.path}</div>
+          <PageOpenLink url={page.url} />
+        </div>
         {page.title && <div className="mb-0.5 truncate text-[13.5px] font-medium text-[#2B2F36]">{page.title}</div>}
         {page.description && (
           <div
@@ -99,5 +102,33 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
         </button>
       )}
     </div>
+  );
+}
+
+function PageOpenLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open page: ${url}`}
+      title={`Open page: ${url}`}
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-[#A4A9B4] transition hover:border-[#DDE1E7] hover:bg-[#F7F8FA] hover:text-blue-600"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-3 w-3"
+      >
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+    </a>
   );
 }
