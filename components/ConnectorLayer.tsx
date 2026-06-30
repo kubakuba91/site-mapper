@@ -21,7 +21,7 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
     function recalculate() {
       if (!container) return;
       const containerRect = container.getBoundingClientRect();
-      setSize({ width: container.scrollWidth, height: container.scrollHeight });
+      setSize({ width: container.clientWidth, height: container.clientHeight });
 
       const nextLines: Line[] = [];
       for (const mapping of mappings) {
@@ -35,10 +35,10 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
 
         nextLines.push({
           id: `${mapping.oldPath}->${mapping.newPath}`,
-          x1: oldRect.right - containerRect.left + container.scrollLeft,
-          y1: oldRect.top + oldRect.height / 2 - containerRect.top + container.scrollTop,
-          x2: newRect.left - containerRect.left + container.scrollLeft,
-          y2: newRect.top + newRect.height / 2 - containerRect.top + container.scrollTop,
+          x1: oldRect.right - containerRect.left,
+          y1: oldRect.top + oldRect.height / 2 - containerRect.top,
+          x2: newRect.left - containerRect.left,
+          y2: newRect.top + newRect.height / 2 - containerRect.top,
         });
       }
       setLines(nextLines);
@@ -49,12 +49,18 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
     const resizeObserver = new ResizeObserver(recalculate);
     resizeObserver.observe(container);
 
-    container.addEventListener("scroll", recalculate, { passive: true });
+    const scrollColumns = Array.from(container.querySelectorAll<HTMLElement>("[data-scroll-column]"));
+    for (const column of scrollColumns) {
+      column.addEventListener("scroll", recalculate, { passive: true });
+      resizeObserver.observe(column);
+    }
     window.addEventListener("resize", recalculate);
 
     return () => {
       resizeObserver.disconnect();
-      container.removeEventListener("scroll", recalculate);
+      for (const column of scrollColumns) {
+        column.removeEventListener("scroll", recalculate);
+      }
       window.removeEventListener("resize", recalculate);
     };
   }, [containerRef, mappings]);

@@ -83,36 +83,34 @@ export default function MappingBoard({ oldPages, newPages }: Props) {
         <ExportButton oldPages={oldPages} mappings={mappings} />
       </div>
 
-      <div ref={containerRef} className="relative flex-1 overflow-auto px-4 pb-8">
-        <div className="grid grid-cols-2 gap-12">
-          <div className="flex flex-col gap-2">
-            <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Old site ({oldPages.length})
-            </h2>
-            {oldPages.map((page) => {
-              const mapping = mappingByOldPath.get(page.path);
-              return (
-                <PageRow
-                  key={page.path}
-                  page={page}
-                  side="old"
-                  status={mapping?.status}
-                  armed={armedOldPath === page.path}
-                  onClick={() => handleOldRowClick(page)}
-                  onMarkDropped={() => handleMarkDropped(page)}
-                />
-              );
-            })}
-          </div>
+      <div ref={containerRef} className="relative flex-1 grid grid-cols-2 gap-12 px-4 pb-8 overflow-hidden">
+        <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
+          <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Old site ({oldPages.length})
+          </h2>
+          {oldPages.map((page) => {
+            const mapping = mappingByOldPath.get(page.path);
+            return (
+              <PageRow
+                key={page.path}
+                page={page}
+                side="old"
+                status={mapping?.status}
+                armed={armedOldPath === page.path}
+                onClick={() => handleOldRowClick(page)}
+                onMarkDropped={() => handleMarkDropped(page)}
+              />
+            );
+          })}
+        </div>
 
-          <div className="flex flex-col gap-2">
-            <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              New site ({newPages.length})
-            </h2>
-            {newPages.map((page) => (
-              <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
-            ))}
-          </div>
+        <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
+          <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            New site ({newPages.length})
+          </h2>
+          {newPages.map((page) => (
+            <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
+          ))}
         </div>
 
         <ConnectorLayer containerRef={containerRef} mappings={mappings} />
