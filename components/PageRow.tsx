@@ -8,6 +8,7 @@ type Props = {
   side: "old" | "new";
   status?: MappingStatus;
   armed?: boolean;
+  matchConfidence?: number;
   mappedOldPaths?: string[];
   onRemoveMappedOldPath?: (oldPath: string) => void;
   onClick: () => void;
@@ -31,6 +32,7 @@ export default function PageRow({
   side,
   status = "unmatched",
   armed,
+  matchConfidence,
   mappedOldPaths = [],
   onRemoveMappedOldPath,
   onClick,
@@ -71,6 +73,11 @@ export default function PageRow({
         <div className="mb-1 flex min-w-0 items-center gap-1.5">
           <div className="truncate font-mono text-[13px] font-semibold text-[#14161A]">{page.path}</div>
           <PageOpenLink url={page.url} />
+          {side === "new" && typeof matchConfidence === "number" && (
+            <span className="ml-auto shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[11px] font-bold text-blue-700">
+              {matchConfidence}%
+            </span>
+          )}
         </div>
         {page.title && <div className="mb-0.5 truncate text-[13.5px] font-medium text-[#2B2F36]">{page.title}</div>}
         {page.description && (
