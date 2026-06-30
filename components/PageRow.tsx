@@ -9,6 +9,7 @@ type Props = {
   status?: MappingStatus;
   armed?: boolean;
   mappedOldPaths?: string[];
+  onRemoveMappedOldPath?: (oldPath: string) => void;
   onClick: () => void;
   onMarkDropped?: () => void;
 };
@@ -31,6 +32,7 @@ export default function PageRow({
   status = "unmatched",
   armed,
   mappedOldPaths = [],
+  onRemoveMappedOldPath,
   onClick,
   onMarkDropped,
 }: Props) {
@@ -92,9 +94,25 @@ export default function PageRow({
               <span
                 key={oldPath}
                 title={oldPath}
-                className="max-w-full truncate rounded-full border border-green-200 bg-green-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-green-700"
+                className="group/badge inline-flex max-w-full items-center gap-1 rounded-full border border-green-200 bg-green-50 py-0.5 pl-2 pr-1 font-mono text-[11px] font-semibold text-green-700"
               >
-                {oldPath}
+                <span className="truncate">{oldPath}</span>
+                {onRemoveMappedOldPath && (
+                  <button
+                    type="button"
+                    aria-label={`Remove mapped page ${oldPath}`}
+                    title={`Remove ${oldPath}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveMappedOldPath(oldPath);
+                    }}
+                    className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-green-700 opacity-0 transition hover:bg-green-200 focus:opacity-100 group-hover/badge:opacity-100"
+                  >
+                    <span aria-hidden="true" className="leading-none">
+                      ×
+                    </span>
+                  </button>
+                )}
               </span>
             ))}
           </div>
