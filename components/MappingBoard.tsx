@@ -19,6 +19,8 @@ type RankedNewPage = {
   confidence: number;
 };
 
+type OldPageView = "all" | "unmatched";
+
 export default function MappingBoard({
   oldPages,
   newPages,
@@ -30,6 +32,7 @@ export default function MappingBoard({
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const [showAllNewPages, setShowAllNewPages] = useState(false);
   const [newPageSearch, setNewPageSearch] = useState("");
+  const [oldPageView, setOldPageView] = useState<OldPageView>("all");
 
   const mappingByOldPath = useMemo(() => {
     const map = new Map<string, Mapping>();
@@ -53,6 +56,16 @@ export default function MappingBoard({
     }
     return map;
   }, [mappings]);
+
+  const unmatchedOldPageCount = useMemo(
+    () => oldPages.filter((page) => mappingByOldPath.get(page.path)?.status === "unmatched").length,
+    [mappingByOldPath, oldPages],
+  );
+
+  const displayedOldPages = useMemo(() => {
+    if (oldPageView === "all") return oldPages;
+    return oldPages.filter((page) => mappingByOldPath.get(page.path)?.status === "unmatched");
+  }, [mappingByOldPath, oldPageView, oldPages]);
 
   const armedOldPage = armedOldPath ? oldPageByPath.get(armedOldPath) : null;
 
@@ -141,12 +154,33 @@ export default function MappingBoard({
     <div className="relative isolate flex h-full gap-9 overflow-hidden px-8 pb-8">
       <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
         <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
-          <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
-          <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
-            {oldPages.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
+            <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
+              {displayedOldPages.length}
+            </span>
+          </div>
+          <div className="ml-auto inline-flex rounded-lg border border-[#E2E5EA] bg-[#F7F8FA] p-0.5">
+            {[
+              { id: "all" as const, label: "All", count: oldPages.length },
+              { id: "unmatched" as const, label: "Unmatched", count: unmatchedOldPageCount },
+            ].map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => setOldPageView(view.id)}
+                className={`rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition ${
+                  oldPageView === view.id
+                    ? "bg-white text-blue-600 shadow-[0_1px_2px_rgba(16,18,22,0.08)]"
+                    : "text-[#6B7280] hover:text-[#14161A]"
+                }`}
+              >
+                {view.label} {view.count}
+              </button>
+            ))}
+          </div>
         </div>
-        {oldPages.map((page) => {
+        {displayedOldPages.map((page) => {
           const mapping = mappingByOldPath.get(page.path);
           return (
             <PageRow
@@ -204,6 +238,7 @@ export default function MappingBoard({
         ))}
         <AddPageRow onAdd={onAddNewPage} />
       </div>
+
     </div>
   );
 }
