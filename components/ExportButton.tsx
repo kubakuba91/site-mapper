@@ -26,9 +26,15 @@ export default function ExportButton({ oldPages, mappings }: Props) {
     <button
       type="button"
       onClick={handleExport}
-      className="rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-neutral-700"
+      title="Export CSV"
+      aria-label="Export CSV"
+      className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900 text-white shadow-sm transition-colors hover:bg-neutral-700"
     >
-      Export CSV
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <path d="M12 3v12" />
+        <path d="m7 10 5 5 5-5" />
+        <path d="M5 21h14" />
+      </svg>
     </button>
   );
 }

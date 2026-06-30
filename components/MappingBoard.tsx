@@ -73,14 +73,14 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-neutral-200 bg-white px-4 py-4">
+      <div className="sticky top-0 z-10 flex items-center justify-end gap-4 border-b-2 border-neutral-200 bg-white px-4 py-4">
         <ProgressCounter
           matched={counts.matched}
           dropped={counts.dropped}
           unmatched={counts.unmatched}
           total={oldPages.length}
         />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {headerExtra}
           <ExportButton oldPages={oldPages} mappings={mappings} />
         </div>

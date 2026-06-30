@@ -34,9 +34,29 @@ export default function ShareButton({ onShare }: Props) {
       type="button"
       onClick={handleClick}
       disabled={state === "loading"}
-      className="rounded-lg border-2 border-neutral-300 px-5 py-2.5 text-sm font-bold text-neutral-800 transition-colors hover:bg-neutral-100 disabled:opacity-50"
+      title={label}
+      aria-label={label}
+      className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 transition-colors disabled:opacity-50 ${
+        state === "copied"
+          ? "border-green-400 bg-green-50 text-green-700"
+          : state === "error"
+            ? "border-red-400 bg-red-50 text-red-700"
+            : "border-neutral-300 text-neutral-800 hover:bg-neutral-100"
+      }`}
     >
-      {label}
+      {state === "copied" ? (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <path d="m8.59 13.51 6.83 3.98" />
+          <path d="m15.41 6.51-6.82 3.98" />
+        </svg>
+      )}
     </button>
   );
 }
