@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import type { CrawledPage, Mapping } from "./types";
 
 type MappingSessionRow = {
@@ -26,7 +26,7 @@ export async function createSession(input: {
   newPages: CrawledPage[];
   mappings: Mapping[];
 }): Promise<string> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("mapping_sessions")
     .insert({
       old_base_url: input.oldBaseUrl,
@@ -43,7 +43,7 @@ export async function createSession(input: {
 }
 
 export async function loadSession(id: string): Promise<LoadedSession> {
-  const { data, error } = await supabase.from("mapping_sessions").select("*").eq("id", id).single();
+  const { data, error } = await getSupabase().from("mapping_sessions").select("*").eq("id", id).single();
   if (error || !data) throw new Error(error?.message ?? "Shared session not found");
 
   const row = data as MappingSessionRow;
@@ -58,7 +58,7 @@ export async function loadSession(id: string): Promise<LoadedSession> {
 }
 
 export async function saveMappings(id: string, mappings: Mapping[]): Promise<void> {
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from("mapping_sessions")
     .update({ mappings, updated_at: new Date().toISOString() })
     .eq("id", id);
