@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { crawlSite } from "@/lib/crawler";
 import type { CrawlRequestBody, CrawlResult } from "@/lib/types";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: CrawlRequestBody;
