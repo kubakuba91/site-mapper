@@ -5,12 +5,13 @@ import type { CrawledPage, Mapping } from "@/lib/types";
 
 type Props = {
   oldPages: CrawledPage[];
+  newPages: CrawledPage[];
   mappings: Mapping[];
 };
 
-export default function ExportButton({ oldPages, mappings }: Props) {
+export default function ExportButton({ oldPages, newPages, mappings }: Props) {
   function handleExport() {
-    const csv = buildExportCsv(oldPages, mappings);
+    const csv = buildExportCsv(oldPages, newPages, mappings);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
