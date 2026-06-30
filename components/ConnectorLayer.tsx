@@ -54,6 +54,12 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
       column.addEventListener("scroll", recalculate, { passive: true });
       resizeObserver.observe(column);
     }
+
+    const rowElements = Array.from(container.querySelectorAll<HTMLElement>("[data-row-id]"));
+    for (const row of rowElements) {
+      resizeObserver.observe(row);
+    }
+
     window.addEventListener("resize", recalculate);
 
     return () => {
@@ -67,7 +73,8 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
 
   return (
     <svg
-      className="pointer-events-none absolute left-0 top-0"
+      aria-hidden="true"
+      className="pointer-events-none absolute left-0 top-0 z-0"
       width={size.width}
       height={size.height}
       style={{ overflow: "visible" }}
