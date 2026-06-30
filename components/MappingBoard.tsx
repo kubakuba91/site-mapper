@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { CrawledPage, Mapping } from "@/lib/types";
 import PageRow from "./PageRow";
-import ConnectorLayer from "./ConnectorLayer";
 import AddPageRow from "./AddPageRow";
 
 type Props = {
@@ -31,7 +30,6 @@ export default function MappingBoard({
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const [showAllNewPages, setShowAllNewPages] = useState(false);
   const [newPageSearch, setNewPageSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const mappingByOldPath = useMemo(() => {
     const map = new Map<string, Mapping>();
@@ -140,7 +138,7 @@ export default function MappingBoard({
   }
 
   return (
-    <div ref={containerRef} className="relative isolate flex h-full gap-9 overflow-hidden px-8 pb-8">
+    <div className="relative isolate flex h-full gap-9 overflow-hidden px-8 pb-8">
       <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
         <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
           <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
@@ -206,8 +204,6 @@ export default function MappingBoard({
         ))}
         <AddPageRow onAdd={onAddNewPage} />
       </div>
-
-      <ConnectorLayer containerRef={containerRef} mappings={mappings} />
     </div>
   );
 }
