@@ -75,10 +75,16 @@ export default function MappingBoard({
     const query = newPageSearch.trim().toLowerCase();
     if (!query) return displayedNewPages;
 
-    return displayedNewPages.filter(({ page }) =>
-      [page.path, page.url, page.title, page.description].some((value) => value?.toLowerCase().includes(query)),
-    );
-  }, [displayedNewPages, newPageSearch]);
+    return newPages
+      .map((page) => ({
+        page,
+        confidence: armedOldPage ? scorePageMatch(armedOldPage, page) : 0,
+      }))
+      .filter(({ page }) =>
+        [page.path, page.url, page.title, page.description].some((value) => value?.toLowerCase().includes(query)),
+      )
+      .sort((a, b) => b.confidence - a.confidence || a.page.path.localeCompare(b.page.path));
+  }, [armedOldPage, displayedNewPages, newPageSearch, newPages]);
 
   function updateMapping(oldPath: string, patch: Partial<Mapping>) {
     setMappings((prev) => prev.map((m) => (m.oldPath === oldPath ? { ...m, ...patch } : m)));
