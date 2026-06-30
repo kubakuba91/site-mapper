@@ -3,7 +3,7 @@ import type { BasicAuth, CrawlError, CrawledPage } from "./types";
 
 const DEFAULT_PAGE_LIMIT = 200;
 const DEFAULT_DEPTH_LIMIT = 4;
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 45000;
 const CONCURRENCY = 8;
 
 function authHeaders(auth?: BasicAuth): HeadersInit {
