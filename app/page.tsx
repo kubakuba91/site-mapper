@@ -126,7 +126,7 @@ function Home() {
   if (isLoadingSession) {
     return (
       <div className="flex flex-1 items-center justify-center bg-zinc-50">
-        <p className="text-sm text-neutral-500">Loading shared session…</p>
+        <p className="text-base font-medium text-neutral-600">Loading shared session…</p>
       </div>
     );
   }
@@ -137,16 +137,20 @@ function Home() {
     const { oldResult, newResult } = result;
     return (
       <div className="flex h-screen flex-col bg-white">
-        <div className="flex flex-col gap-1 border-b border-neutral-200 px-4 py-3">
-          <h1 className="text-base font-semibold text-neutral-900">Redirect Mapper</h1>
-          <div className="flex flex-wrap gap-3 text-xs text-neutral-500">
+        <div className="flex flex-col gap-1.5 border-b-2 border-neutral-200 px-4 py-4">
+          <h1 className="text-xl font-bold text-neutral-900">Redirect Mapper</h1>
+          <div className="flex flex-wrap gap-3 text-sm font-medium text-neutral-600">
             <span>{oldResult!.baseUrl}</span>
             <span>→</span>
             <span>{newResult!.baseUrl}</span>
           </div>
           <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <button type="button" onClick={handleStartOver} className="self-start text-xs text-blue-600 underline">
+          {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="self-start text-sm font-bold text-blue-700 underline"
+          >
             Start over
           </button>
         </div>
@@ -166,14 +170,14 @@ function Home() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-6 py-24">
       <div className="mb-10 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Redirect Mapper</h1>
-        <p className="mt-2 max-w-md text-sm text-neutral-500">
+        <h1 className="text-3xl font-extrabold text-neutral-900">Redirect Mapper</h1>
+        <p className="mt-2 max-w-md text-base text-neutral-600">
           Map old-site URLs to new-site URLs for a relaunch. Crawl both sites, draw the mapping, export a CSV.
         </p>
       </div>
-      <div className="w-full rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
+      <div className="w-full rounded-xl border-2 border-neutral-200 bg-white p-8 shadow-sm">
         <UrlInputForm onSubmit={handleSubmit} isLoading={isLoading} />
-        {error && <p className="mx-auto mt-4 max-w-xl text-sm text-red-600">{error}</p>}
+        {error && <p className="mx-auto mt-4 max-w-xl text-sm font-semibold text-red-600">{error}</p>}
       </div>
     </div>
   );
@@ -183,7 +187,7 @@ function CrawlErrorsBanner({ oldResult, newResult }: { oldResult: CrawlResult; n
   const totalErrors = oldResult.errors.length + newResult.errors.length;
   if (totalErrors === 0) return null;
   return (
-    <p className="text-xs text-amber-600">
+    <p className="text-sm font-semibold text-amber-700">
       {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load
       {newResult.errors.length > 0 ? " — staging may need login" : ""}.
     </p>

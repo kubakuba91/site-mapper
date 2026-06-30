@@ -73,7 +73,7 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-neutral-200 bg-white px-4 py-4">
         <ProgressCounter
           matched={counts.matched}
           dropped={counts.dropped}
@@ -88,7 +88,7 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
 
       <div ref={containerRef} className="relative flex-1 grid grid-cols-2 gap-12 px-4 pb-8 overflow-hidden">
         <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
-          <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <h2 className="sticky top-0 bg-white py-2 text-sm font-bold uppercase tracking-wide text-neutral-700">
             Old site ({oldPages.length})
           </h2>
           {oldPages.map((page) => {
@@ -108,7 +108,7 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
         </div>
 
         <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
-          <h2 className="sticky top-0 bg-white py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <h2 className="sticky top-0 bg-white py-2 text-sm font-bold uppercase tracking-wide text-neutral-700">
             New site ({newPages.length})
           </h2>
           {newPages.map((page) => (
