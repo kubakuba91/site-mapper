@@ -27,4 +27,6 @@ export type Mapping = {
   oldPath: string;
   newPath: string | null; // null if dropped or unmatched
   status: MappingStatus;
+  metadataTitle?: string | null;
+  metadataDescription?: string | null;
 };
