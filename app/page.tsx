@@ -510,68 +510,7 @@ function Home() {
 }
 
 function HeaderLogo() {
-  return (
-    <svg
-      aria-label="Relay301"
-      role="img"
-      viewBox="0 0 520 160"
-      className="h-9 w-auto shrink-0"
-      fill="none"
-    >
-      <defs>
-        <filter id="relay-glow" x="-40%" y="-60%" width="180%" height="220%">
-          <feGaussianBlur stdDeviation="8" result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="0 0 0 0 0.06 0 0 0 0 0.38 0 0 0 0 1 0 0 0 0.75 0"
-          />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path
-        d="M139 73a61 61 0 1 1-27-50"
-        stroke="#071327"
-        strokeWidth="13"
-        strokeLinecap="round"
-      />
-      <path
-        d="M50 82l31 31 76-80"
-        stroke="#1267FF"
-        strokeWidth="16"
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        filter="url(#relay-glow)"
-      />
-      <path d="M126 30l43-12-10 44-9-19-18-5z" fill="#1267FF" filter="url(#relay-glow)" />
-      <text
-        x="205"
-        y="103"
-        fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="76"
-        fontWeight="700"
-        letterSpacing="0"
-        fill="#071327"
-      >
-        Relay
-      </text>
-      <text
-        x="382"
-        y="103"
-        fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="76"
-        fontWeight="800"
-        letterSpacing="0"
-        fill="#1267FF"
-        filter="url(#relay-glow)"
-      >
-        301
-      </text>
-    </svg>
-  );
+  return <img src="/Relay301%20(1).png" alt="Relay301" className="h-9 w-auto shrink-0" />;
 }
 
 function DomainLink({ url, label }: { url: string; label: string }) {
