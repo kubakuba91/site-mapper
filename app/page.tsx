@@ -250,9 +250,9 @@ function Home() {
           </header>
 
           <div className="flex flex-wrap items-center gap-2.5 border-b border-[#EAECEF] px-8 pb-3.5">
-            <span className="font-mono text-[13.5px] text-[#14161A]">{oldResult!.baseUrl}</span>
+            <DomainLink url={oldResult!.baseUrl} label="Open old site" />
             <span className="font-mono text-blue-600">→</span>
-            <span className="font-mono text-[13.5px] text-[#14161A]">{newResult!.baseUrl}</span>
+            <DomainLink url={newResult!.baseUrl} label="Open new site" />
             <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
           </div>
 
@@ -329,9 +329,9 @@ function Home() {
         </header>
         <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 border-b border-[#EAECEF] px-8 pb-3.5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="font-mono text-[13.5px] text-[#14161A]">{oldResult!.baseUrl}</span>
+            <DomainLink url={oldResult!.baseUrl} label="Open old site" />
             <span className="font-mono text-blue-600">→</span>
-            <span className="font-mono text-[13.5px] text-[#14161A]">{newResult!.baseUrl}</span>
+            <DomainLink url={newResult!.baseUrl} label="Open new site" />
             <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
           </div>
@@ -447,6 +447,36 @@ function Home() {
         </section>
       </main>
     </div>
+  );
+}
+
+function DomainLink({ url, label }: { url: string; label: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <span className="truncate font-mono text-[13.5px] text-[#14161A]">{url}</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`${label}: ${url}`}
+        title={`${label}: ${url}`}
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-[#8A8F9A] transition hover:border-[#DDE1E7] hover:bg-[#F7F8FA] hover:text-blue-600"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-3.5 w-3.5"
+        >
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+      </a>
+    </span>
   );
 }
 
