@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import IconButton from "./IconButton";
 
 type Props = {
   onShare: () => Promise<string>;
@@ -30,12 +31,10 @@ export default function ShareButton({ onShare }: Props) {
   }[state];
 
   return (
-    <button
-      type="button"
+    <IconButton
+      label={label}
       onClick={handleClick}
       disabled={state === "loading"}
-      title={label}
-      aria-label={label}
       className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 transition-colors disabled:opacity-50 ${
         state === "copied"
           ? "border-green-400 bg-green-50 text-green-700"
@@ -57,6 +56,6 @@ export default function ShareButton({ onShare }: Props) {
           <path d="m15.41 6.51-6.82 3.98" />
         </svg>
       )}
-    </button>
+    </IconButton>
   );
 }
