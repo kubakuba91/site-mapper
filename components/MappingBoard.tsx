@@ -80,6 +80,11 @@ export default function MappingBoard({
     setArmedOldPath(null);
   }
 
+  function handleRemoveMappedOldPath(oldPath: string) {
+    updateMapping(oldPath, { status: "unmatched", newPath: null, metadataTitle: null, metadataDescription: null });
+    if (armedOldPath === oldPath) setArmedOldPath(null);
+  }
+
   function handleMarkDropped(page: CrawledPage) {
     const mapping = mappingByOldPath.get(page.path);
     if (!mapping) return;
@@ -130,6 +135,7 @@ export default function MappingBoard({
             page={page}
             side="new"
             mappedOldPaths={oldPathsByNewPath.get(page.path) ?? []}
+            onRemoveMappedOldPath={handleRemoveMappedOldPath}
             onClick={() => handleNewRowClick(page)}
           />
         ))}
