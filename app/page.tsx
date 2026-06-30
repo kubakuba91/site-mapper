@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import UrlInputForm, { type SubmitPayload } from "@/components/UrlInputForm";
 import MappingBoard from "@/components/MappingBoard";
 import ShareButton from "@/components/ShareButton";
+import ExportButton from "@/components/ExportButton";
+import ProgressCounter from "@/components/ProgressCounter";
 import { createSession, loadSession, saveMappings } from "@/lib/sessions";
 import type { CrawlResult, Mapping } from "@/lib/types";
 
@@ -164,24 +166,51 @@ function Home() {
 
   if (hasResults) {
     const { oldResult, newResult } = result;
+    let matched = 0;
+    let dropped = 0;
+    let unmatched = 0;
+    for (const m of mappings) {
+      if (m.status === "matched") matched++;
+      else if (m.status === "dropped") dropped++;
+      else unmatched++;
+    }
+
     return (
       <div className="flex h-screen flex-col bg-white">
-        <div className="flex flex-col gap-1.5 border-b-2 border-neutral-200 px-4 py-4">
-          <h1 className="text-xl font-bold text-neutral-900">Redirect Mapper</h1>
-          <div className="flex flex-wrap gap-3 text-sm font-medium text-neutral-600">
-            <span>{oldResult!.baseUrl}</span>
-            <span>→</span>
-            <span>{newResult!.baseUrl}</span>
+        <header className="flex w-full items-center justify-between px-8 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
+              ↳
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+            <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
+              v1.0
+            </span>
           </div>
-          <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
-          {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-          <button
-            type="button"
-            onClick={handleStartOver}
-            className="self-start text-sm font-bold text-blue-700 underline"
-          >
-            Start over
-          </button>
+          <div className="flex items-center gap-2.5">
+            <ShareButton onShare={handleShare} />
+            <ExportButton oldPages={oldResult!.pages} mappings={mappings} />
+          </div>
+        </header>
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 border-b border-[#EAECEF] px-8 pb-3.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="font-mono text-[13.5px] text-[#14161A]">{oldResult!.baseUrl}</span>
+            <span className="font-mono text-blue-600">→</span>
+            <span className="font-mono text-[13.5px] text-[#14161A]">{newResult!.baseUrl}</span>
+            <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
+            {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+          </div>
+          <div className="flex flex-wrap items-center gap-3.5">
+            <ProgressCounter matched={matched} dropped={dropped} unmatched={unmatched} total={oldResult!.pages.length} />
+            <span className="text-[#D5D8DE]">·</span>
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="border-b border-blue-200 pb-px font-mono text-[13px] text-blue-600"
+            >
+              ↺ Start over
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-hidden">
           <MappingBoard
@@ -189,7 +218,6 @@ function Home() {
             newPages={newResult!.pages}
             mappings={mappings}
             setMappings={setMappings}
-            headerExtra={<ShareButton onShare={handleShare} />}
             onAddOldPage={handleAddOldPage}
             onAddNewPage={handleAddNewPage}
           />
@@ -220,11 +248,6 @@ function Home() {
             v1.0
           </span>
         </div>
-        <nav className="flex items-center gap-6 font-mono text-sm text-[#5C616C]">
-          <span>crawl</span>
-          <span>map</span>
-          <span>export</span>
-        </nav>
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-[1140px] flex-1 flex-wrap items-center justify-center gap-x-18 gap-y-14 px-8 py-10 pb-16">
@@ -296,8 +319,9 @@ function CrawlErrorsBanner({ oldResult, newResult }: { oldResult: CrawlResult; n
   const totalErrors = oldResult.errors.length + newResult.errors.length;
   if (totalErrors === 0) return null;
   return (
-    <details className="text-sm font-semibold text-amber-700">
-      <summary className="cursor-pointer">
+    <details className="group">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-[7px] border border-[#F6E0B8] bg-[#FEF3E2] px-2.5 py-1 font-mono text-xs text-[#B4540B]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#E0922F]" />
         {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load
         {newResult.errors.length > 0 ? " — staging may need login" : ""}.
       </summary>

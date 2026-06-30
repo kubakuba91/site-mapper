@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { CrawledPage, Mapping } from "@/lib/types";
 import PageRow from "./PageRow";
 import ConnectorLayer from "./ConnectorLayer";
-import ProgressCounter from "./ProgressCounter";
-import ExportButton from "./ExportButton";
 import AddPageRow from "./AddPageRow";
 
 type Props = {
@@ -13,7 +11,6 @@ type Props = {
   newPages: CrawledPage[];
   mappings: Mapping[];
   setMappings: Dispatch<SetStateAction<Mapping[]>>;
-  headerExtra?: ReactNode;
   onAddOldPage: (path: string) => void;
   onAddNewPage: (path: string) => void;
 };
@@ -23,7 +20,6 @@ export default function MappingBoard({
   newPages,
   mappings,
   setMappings,
-  headerExtra,
   onAddOldPage,
   onAddNewPage,
 }: Props) {
@@ -70,67 +66,46 @@ export default function MappingBoard({
     if (armedOldPath === page.path) setArmedOldPath(null);
   }
 
-  const counts = useMemo(() => {
-    let matched = 0;
-    let dropped = 0;
-    let unmatched = 0;
-    for (const m of mappings) {
-      if (m.status === "matched") matched++;
-      else if (m.status === "dropped") dropped++;
-      else unmatched++;
-    }
-    return { matched, dropped, unmatched };
-  }, [mappings]);
-
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-4 border-b-2 border-neutral-200 bg-white px-4 py-4">
-        <ProgressCounter
-          matched={counts.matched}
-          dropped={counts.dropped}
-          unmatched={counts.unmatched}
-          total={oldPages.length}
-        />
-        <div className="flex items-center gap-2">
-          {headerExtra}
-          <ExportButton oldPages={oldPages} mappings={mappings} />
+    <div ref={containerRef} className="relative flex h-full gap-9 overflow-hidden px-8 pb-8">
+      <div data-scroll-column className="flex flex-1 flex-col gap-2.5 overflow-y-auto">
+        <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
+          <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
+          <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
+            {oldPages.length}
+          </span>
         </div>
+        {oldPages.map((page) => {
+          const mapping = mappingByOldPath.get(page.path);
+          return (
+            <PageRow
+              key={page.path}
+              page={page}
+              side="old"
+              status={mapping?.status}
+              armed={armedOldPath === page.path}
+              onClick={() => handleOldRowClick(page)}
+              onMarkDropped={() => handleMarkDropped(page)}
+            />
+          );
+        })}
+        <AddPageRow onAdd={onAddOldPage} />
       </div>
 
-      <div ref={containerRef} className="relative flex-1 grid grid-cols-2 gap-12 px-4 pb-8 overflow-hidden">
-        <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
-          <h2 className="sticky top-0 bg-white py-2 text-sm font-bold uppercase tracking-wide text-neutral-700">
-            Old site ({oldPages.length})
-          </h2>
-          {oldPages.map((page) => {
-            const mapping = mappingByOldPath.get(page.path);
-            return (
-              <PageRow
-                key={page.path}
-                page={page}
-                side="old"
-                status={mapping?.status}
-                armed={armedOldPath === page.path}
-                onClick={() => handleOldRowClick(page)}
-                onMarkDropped={() => handleMarkDropped(page)}
-              />
-            );
-          })}
-          <AddPageRow onAdd={onAddOldPage} />
+      <div data-scroll-column className="flex flex-1 flex-col gap-2.5 overflow-y-auto">
+        <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
+          <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">New site</span>
+          <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
+            {newPages.length}
+          </span>
         </div>
-
-        <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
-          <h2 className="sticky top-0 bg-white py-2 text-sm font-bold uppercase tracking-wide text-neutral-700">
-            New site ({newPages.length})
-          </h2>
-          {newPages.map((page) => (
-            <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
-          ))}
-          <AddPageRow onAdd={onAddNewPage} />
-        </div>
-
-        <ConnectorLayer containerRef={containerRef} mappings={mappings} />
+        {newPages.map((page) => (
+          <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
+        ))}
+        <AddPageRow onAdd={onAddNewPage} />
       </div>
+
+      <ConnectorLayer containerRef={containerRef} mappings={mappings} />
     </div>
   );
 }

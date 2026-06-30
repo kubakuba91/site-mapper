@@ -76,7 +76,7 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
         <path
           key={line.id}
           d={`M ${line.x1} ${line.y1} C ${(line.x1 + line.x2) / 2} ${line.y1}, ${(line.x1 + line.x2) / 2} ${line.y2}, ${line.x2} ${line.y2}`}
-          stroke="#3b82f6"
+          stroke="#2563eb"
           strokeWidth={1.5}
           fill="none"
           opacity={0.7}
