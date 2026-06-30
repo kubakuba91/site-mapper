@@ -8,6 +8,7 @@ type Props = {
   side: "old" | "new";
   status?: MappingStatus;
   armed?: boolean;
+  mappedOldPaths?: string[];
   onClick: () => void;
   onMarkDropped?: () => void;
 };
@@ -24,7 +25,15 @@ const targetStatusStyles: Record<MappingStatus, string> = {
   unmatched: "bg-[#FBFBFC] text-[#C2C7CF] group-hover:bg-blue-600 group-hover:text-white",
 };
 
-export default function PageRow({ page, side, status = "unmatched", armed, onClick, onMarkDropped }: Props) {
+export default function PageRow({
+  page,
+  side,
+  status = "unmatched",
+  armed,
+  mappedOldPaths = [],
+  onClick,
+  onMarkDropped,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const effectiveStatus = side === "old" ? status : "unmatched";
 
@@ -76,6 +85,19 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
         )}
         {page.statusCode >= 400 && (
           <div className="mt-0.5 text-xs font-bold text-red-600">HTTP {page.statusCode}</div>
+        )}
+        {side === "new" && mappedOldPaths.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {mappedOldPaths.map((oldPath) => (
+              <span
+                key={oldPath}
+                title={oldPath}
+                className="max-w-full truncate rounded-full border border-green-200 bg-green-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-green-700"
+              >
+                {oldPath}
+              </span>
+            ))}
+          </div>
         )}
         {side === "old" && status === "dropped" && (
           <span className="mt-1 inline-block rounded-full bg-neutral-300 px-2 py-0.5 text-[11px] font-bold text-neutral-700">
