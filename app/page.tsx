@@ -7,7 +7,6 @@ import MappingBoard from "@/components/MappingBoard";
 import ShareButton from "@/components/ShareButton";
 import ExportButton from "@/components/ExportButton";
 import ProgressCounter from "@/components/ProgressCounter";
-import { RELAY301_LOGO_DATA_URI } from "@/lib/relay301-logo";
 import { createSession, loadSession, saveMappings } from "@/lib/sessions";
 import type { CrawledPage, CrawlResult, Mapping } from "@/lib/types";
 
@@ -513,9 +512,9 @@ function Home() {
 function HeaderLogo() {
   return (
     <img
-      src={RELAY301_LOGO_DATA_URI}
+      src="https://raw.githubusercontent.com/kubakuba91/site-mapper/main/Relay301%20(1).png"
       alt="Relay301"
-      className="h-10 w-auto shrink-0"
+      className="h-9 w-auto shrink-0"
     />
   );
 }
