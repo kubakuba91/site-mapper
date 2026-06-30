@@ -31,7 +31,7 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
   const target = (
     <div
       title={side === "old" ? "Map to a new-site page" : "Receive a mapping from an old-site page"}
-      className={`flex w-[42px] shrink-0 items-center justify-center font-mono text-[11px] transition-colors ${
+      className={`flex items-center justify-center font-mono text-[11px] transition-colors ${
         side === "old" ? "border-l border-[#EDEFF2]" : "border-r border-[#EDEFF2]"
       } ${targetStatusStyles[effectiveStatus]}`}
     >
@@ -49,7 +49,9 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
           onMarkDropped();
         }
       }}
-      className={`group relative flex h-auto cursor-pointer items-stretch overflow-hidden rounded-xl border transition-all ${
+      className={`group relative grid cursor-pointer overflow-hidden rounded-xl border transition-all ${
+        side === "old" ? "grid-cols-[minmax(0,1fr)_42px]" : "grid-cols-[42px_minmax(0,1fr)]"
+      } ${
         armed ? "border-blue-600 ring-2 ring-blue-200" : cardStatusStyles[effectiveStatus]
       }`}
     >
