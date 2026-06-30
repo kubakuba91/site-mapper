@@ -49,11 +49,13 @@ function Home() {
   const sessionParam = searchParams.get("session");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecrawling, setIsRecrawling] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(Boolean(sessionParam));
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CrawlState>({ oldResult: null, newResult: null });
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lastSubmitPayload, setLastSubmitPayload] = useState<SubmitPayload | null>(null);
   const [reviewingSuggestions, setReviewingSuggestions] = useState(false);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(new Set());
 
@@ -70,6 +72,7 @@ function Home() {
         });
         setMappings(session.mappings);
         setSessionId(session.id);
+        setLastSubmitPayload(null);
         setReviewingSuggestions(false);
         setSelectedSuggestionIds(new Set());
       } catch (err) {
@@ -106,6 +109,7 @@ function Home() {
       setResult({ oldResult, newResult });
       setMappings(oldResult.pages.map((p) => ({ oldPath: p.path, newPath: null, status: "unmatched" as const })));
       setSessionId(null);
+      setLastSubmitPayload(payload);
       setSelectedSuggestionIds(new Set(suggestions.map((suggestion) => suggestion.id)));
       setReviewingSuggestions(suggestions.length > 0);
     } catch (err) {
@@ -148,9 +152,50 @@ function Home() {
     setResult({ oldResult: null, newResult: null });
     setMappings([]);
     setSessionId(null);
+    setLastSubmitPayload(null);
     setReviewingSuggestions(false);
     setSelectedSuggestionIds(new Set());
     router.replace("/");
+  }
+
+  async function handleRecrawl() {
+    if (!result.oldResult || !result.newResult) return;
+
+    setIsRecrawling(true);
+    setError(null);
+    try {
+      const currentOldResult = result.oldResult;
+      const currentNewResult = result.newResult;
+      const currentMappings = mappings;
+      const matchedOldPaths = new Set(
+        currentMappings.filter((mapping) => mapping.status === "matched").map((mapping) => mapping.oldPath),
+      );
+      const matchedNewPaths = new Set(
+        currentMappings
+          .filter((mapping) => mapping.status === "matched" && mapping.newPath)
+          .map((mapping) => mapping.newPath as string),
+      );
+      const [freshOldResult, freshNewResult] = await Promise.all([
+        crawl(currentOldResult.baseUrl),
+        crawl(currentNewResult.baseUrl, lastSubmitPayload?.newSiteAuth),
+      ]);
+      const oldPages = mergeRecrawledPages(freshOldResult.pages, currentOldResult.pages, matchedOldPaths);
+      const newPages = mergeRecrawledPages(freshNewResult.pages, currentNewResult.pages, matchedNewPaths);
+
+      setResult({
+        oldResult: { ...freshOldResult, pages: oldPages },
+        newResult: { ...freshNewResult, pages: newPages },
+      });
+      setMappings(mergeMappingsAfterRecrawl(currentMappings, oldPages));
+      setSessionId(null);
+      setReviewingSuggestions(false);
+      setSelectedSuggestionIds(new Set());
+      router.replace("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Recrawl failed");
+    } finally {
+      setIsRecrawling(false);
+    }
   }
 
   function toggleSuggestion(id: string) {
@@ -208,7 +253,7 @@ function Home() {
   if (isLoadingSession) {
     return (
       <div className="flex flex-1 items-center justify-center bg-zinc-50">
-        <p className="text-base font-medium text-neutral-600">Loading shared session…</p>
+        <p className="text-base font-medium text-neutral-600">Loading shared session...</p>
       </div>
     );
   }
@@ -323,6 +368,29 @@ function Home() {
             </span>
           </div>
           <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleRecrawl}
+              disabled={isRecrawling}
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[#E2E5EA] bg-white px-3.5 py-2 font-sans text-[13px] font-medium text-[#14161A] transition-colors hover:bg-[#F7F8FA] disabled:opacity-50"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M3 21v-5h5" />
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M16 8h5V3" />
+              </svg>
+              {isRecrawling ? "Recrawling..." : "Recrawl"}
+            </button>
             <ShareButton onShare={handleShare} />
             <ExportButton oldPages={oldResult!.pages} newPages={newResult!.pages} mappings={mappings} />
           </div>
@@ -543,6 +611,32 @@ function buildMappingSuggestions(oldPages: CrawledPage[], newPages: CrawledPage[
   }
 
   return suggestions;
+}
+
+function mergeRecrawledPages(
+  freshPages: CrawledPage[],
+  existingPages: CrawledPage[],
+  existingPathsToPreserve: Set<string>,
+): CrawledPage[] {
+  const pagesByPath = new Map(freshPages.map((page) => [page.path, page]));
+  const mergedPages = [...freshPages];
+
+  for (const page of existingPages) {
+    if (!existingPathsToPreserve.has(page.path) || pagesByPath.has(page.path)) continue;
+    mergedPages.push(page);
+    pagesByPath.set(page.path, page);
+  }
+
+  return mergedPages;
+}
+
+function mergeMappingsAfterRecrawl(currentMappings: Mapping[], oldPages: CrawledPage[]): Mapping[] {
+  const mappingsByOldPath = new Map(currentMappings.map((mapping) => [mapping.oldPath, mapping]));
+
+  return oldPages.map((page) => {
+    const currentMapping = mappingsByOldPath.get(page.path);
+    return currentMapping ?? { oldPath: page.path, newPath: null, status: "unmatched" as const };
+  });
 }
 
 function pathEndingKeys(path: string): string[] {
