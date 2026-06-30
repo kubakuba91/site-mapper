@@ -3,7 +3,7 @@ import type { BasicAuth, CrawlError, CrawledPage } from "./types";
 
 const DEFAULT_PAGE_LIMIT = 200;
 const DEFAULT_DEPTH_LIMIT = 4;
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 15000;
 const CONCURRENCY = 8;
 
 function authHeaders(auth?: BasicAuth): HeadersInit {
@@ -172,6 +172,7 @@ async function fetchPageDetails(
   } catch (err) {
     const reason = err instanceof Error && err.name === "AbortError" ? "timeout" : "fetch failed";
     errors.push({ url, reason });
+    pages.push({ url, path: pathOf(url), title: null, description: null, statusCode: 0 });
     return null;
   }
 }
