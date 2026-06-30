@@ -49,7 +49,7 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
           onMarkDropped();
         }
       }}
-      className={`group relative flex h-fit cursor-pointer items-stretch overflow-hidden rounded-xl border transition-all ${
+      className={`group relative flex h-auto cursor-pointer items-stretch overflow-hidden rounded-xl border transition-all ${
         armed ? "border-blue-600 ring-2 ring-blue-200" : cardStatusStyles[effectiveStatus]
       }`}
     >
