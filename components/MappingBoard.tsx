@@ -67,8 +67,8 @@ export default function MappingBoard({
   }
 
   return (
-    <div ref={containerRef} className="relative flex h-full gap-9 overflow-hidden px-8 pb-8">
-      <div data-scroll-column className="flex flex-1 flex-col gap-2.5 overflow-y-auto">
+    <div ref={containerRef} className="relative isolate flex h-full gap-9 overflow-hidden px-8 pb-8">
+      <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
         <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
           <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
           <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
@@ -92,7 +92,7 @@ export default function MappingBoard({
         <AddPageRow onAdd={onAddOldPage} />
       </div>
 
-      <div data-scroll-column className="flex flex-1 flex-col gap-2.5 overflow-y-auto">
+      <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
         <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
           <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">New site</span>
           <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
