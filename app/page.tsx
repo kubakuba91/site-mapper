@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import UrlInputForm, { type SubmitPayload } from "@/components/UrlInputForm";
 import MappingBoard from "@/components/MappingBoard";
-import type { CrawlResult } from "@/lib/types";
+import ShareButton from "@/components/ShareButton";
+import { createSession, loadSession, saveMappings } from "@/lib/sessions";
+import type { CrawlResult, Mapping } from "@/lib/types";
 
 type CrawlState = {
   oldResult: CrawlResult | null;
@@ -23,10 +26,60 @@ async function crawl(baseUrl: string, auth?: { username?: string; password?: str
   return res.json();
 }
 
-export default function Home() {
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <Home />
+    </Suspense>
+  );
+}
+
+function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams.get("session");
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(Boolean(sessionParam));
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CrawlState>({ oldResult: null, newResult: null });
+  const [mappings, setMappings] = useState<Mapping[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionParam) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const session = await loadSession(sessionParam);
+        if (cancelled) return;
+        setResult({
+          oldResult: { baseUrl: session.oldBaseUrl, pages: session.oldPages, errors: [] },
+          newResult: { baseUrl: session.newBaseUrl, pages: session.newPages, errors: [] },
+        });
+        setMappings(session.mappings);
+        setSessionId(session.id);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load shared session");
+      } finally {
+        if (!cancelled) setIsLoadingSession(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionParam]);
+
+  // Auto-save mapping edits to the shared session, debounced.
+  useEffect(() => {
+    if (!sessionId) return;
+    const timer = setTimeout(() => {
+      saveMappings(sessionId, mappings).catch(() => {
+        /* best-effort autosave; user can still export locally */
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [sessionId, mappings]);
 
   async function handleSubmit(payload: SubmitPayload) {
     setIsLoading(true);
@@ -37,11 +90,45 @@ export default function Home() {
         crawl(payload.newUrl, payload.newSiteAuth),
       ]);
       setResult({ oldResult, newResult });
+      setMappings(oldResult.pages.map((p) => ({ oldPath: p.path, newPath: null, status: "unmatched" as const })));
+      setSessionId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Crawl failed");
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleStartOver() {
+    setResult({ oldResult: null, newResult: null });
+    setMappings([]);
+    setSessionId(null);
+    router.replace("/");
+  }
+
+  async function handleShare(): Promise<string> {
+    if (!result.oldResult || !result.newResult) throw new Error("Nothing to share yet");
+    let id = sessionId;
+    if (!id) {
+      id = await createSession({
+        oldBaseUrl: result.oldResult.baseUrl,
+        newBaseUrl: result.newResult.baseUrl,
+        oldPages: result.oldResult.pages,
+        newPages: result.newResult.pages,
+        mappings,
+      });
+      setSessionId(id);
+      router.replace(`/?session=${id}`);
+    }
+    return `${window.location.origin}${window.location.pathname}?session=${id}`;
+  }
+
+  if (isLoadingSession) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-zinc-50">
+        <p className="text-sm text-neutral-500">Loading shared session…</p>
+      </div>
+    );
   }
 
   const hasResults = result.oldResult && result.newResult;
@@ -58,16 +145,19 @@ export default function Home() {
             <span>{newResult!.baseUrl}</span>
           </div>
           <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
-          <button
-            type="button"
-            onClick={() => setResult({ oldResult: null, newResult: null })}
-            className="self-start text-xs text-blue-600 underline"
-          >
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button type="button" onClick={handleStartOver} className="self-start text-xs text-blue-600 underline">
             Start over
           </button>
         </div>
         <div className="flex-1 overflow-hidden">
-          <MappingBoard oldPages={oldResult!.pages} newPages={newResult!.pages} />
+          <MappingBoard
+            oldPages={oldResult!.pages}
+            newPages={newResult!.pages}
+            mappings={mappings}
+            setMappings={setMappings}
+            headerExtra={<ShareButton onShare={handleShare} />}
+          />
         </div>
       </div>
     );

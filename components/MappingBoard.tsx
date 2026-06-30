@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import type { CrawledPage, Mapping } from "@/lib/types";
 import PageRow from "./PageRow";
 import ConnectorLayer from "./ConnectorLayer";
@@ -10,12 +10,12 @@ import ExportButton from "./ExportButton";
 type Props = {
   oldPages: CrawledPage[];
   newPages: CrawledPage[];
+  mappings: Mapping[];
+  setMappings: Dispatch<SetStateAction<Mapping[]>>;
+  headerExtra?: ReactNode;
 };
 
-export default function MappingBoard({ oldPages, newPages }: Props) {
-  const [mappings, setMappings] = useState<Mapping[]>(() =>
-    oldPages.map((p) => ({ oldPath: p.path, newPath: null, status: "unmatched" as const })),
-  );
+export default function MappingBoard({ oldPages, newPages, mappings, setMappings, headerExtra }: Props) {
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +80,10 @@ export default function MappingBoard({ oldPages, newPages }: Props) {
           unmatched={counts.unmatched}
           total={oldPages.length}
         />
-        <ExportButton oldPages={oldPages} mappings={mappings} />
+        <div className="flex items-center gap-3">
+          {headerExtra}
+          <ExportButton oldPages={oldPages} mappings={mappings} />
+        </div>
       </div>
 
       <div ref={containerRef} className="relative flex-1 grid grid-cols-2 gap-12 px-4 pb-8 overflow-hidden">
