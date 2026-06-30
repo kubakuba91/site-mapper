@@ -38,6 +38,17 @@ export default function MappingBoard({
     return map;
   }, [oldPages]);
 
+  const oldPathsByNewPath = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const mapping of mappings) {
+      if (mapping.status !== "matched" || !mapping.newPath) continue;
+      const oldPaths = map.get(mapping.newPath) ?? [];
+      oldPaths.push(mapping.oldPath);
+      map.set(mapping.newPath, oldPaths);
+    }
+    return map;
+  }, [mappings]);
+
   function updateMapping(oldPath: string, patch: Partial<Mapping>) {
     setMappings((prev) => prev.map((m) => (m.oldPath === oldPath ? { ...m, ...patch } : m)));
   }
@@ -114,7 +125,13 @@ export default function MappingBoard({
           </span>
         </div>
         {newPages.map((page) => (
-          <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
+          <PageRow
+            key={page.path}
+            page={page}
+            side="new"
+            mappedOldPaths={oldPathsByNewPath.get(page.path) ?? []}
+            onClick={() => handleNewRowClick(page)}
+          />
         ))}
         <AddPageRow onAdd={onAddNewPage} />
       </div>
