@@ -30,6 +30,7 @@ export default function MappingBoard({
 }: Props) {
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const [showAllNewPages, setShowAllNewPages] = useState(false);
+  const [newPageSearch, setNewPageSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const mappingByOldPath = useMemo(() => {
@@ -69,6 +70,15 @@ export default function MappingBoard({
     armedOldPage && !showAllNewPages
       ? rankedNewPages
       : newPages.map((page) => ({ page, confidence: 0 }));
+
+  const filteredNewPages = useMemo(() => {
+    const query = newPageSearch.trim().toLowerCase();
+    if (!query) return displayedNewPages;
+
+    return displayedNewPages.filter(({ page }) =>
+      [page.path, page.url, page.title, page.description].some((value) => value?.toLowerCase().includes(query)),
+    );
+  }, [displayedNewPages, newPageSearch]);
 
   function updateMapping(oldPath: string, patch: Partial<Mapping>) {
     setMappings((prev) => prev.map((m) => (m.oldPath === oldPath ? { ...m, ...patch } : m)));
@@ -155,7 +165,7 @@ export default function MappingBoard({
             {armedOldPage && !showAllNewPages ? "Suggested matches" : "New site"}
           </span>
           <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
-            {displayedNewPages.length}
+            {filteredNewPages.length}
           </span>
           {armedOldPage && (
             <button
@@ -167,7 +177,17 @@ export default function MappingBoard({
             </button>
           )}
         </div>
-        {displayedNewPages.map(({ page, confidence }) => (
+        <div className="sticky top-[45px] z-10 bg-white pb-2">
+          <input
+            type="search"
+            value={newPageSearch}
+            onChange={(event) => setNewPageSearch(event.target.value)}
+            placeholder="Search new pages..."
+            aria-label="Search new-site pages"
+            className="h-9 w-full rounded-lg border border-[#DDE1E7] bg-white px-3 font-mono text-[12px] text-[#14161A] outline-none transition placeholder:text-[#A4A9B4] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+        {filteredNewPages.map(({ page, confidence }) => (
           <PageRow
             key={page.path}
             page={page}
