@@ -168,17 +168,95 @@ function Home() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-6 py-24">
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl font-extrabold text-neutral-900">Redirect Mapper</h1>
-        <p className="mt-2 max-w-md text-base text-neutral-600">
-          Map old-site URLs to new-site URLs for a relaunch. Crawl both sites, draw the mapping, export a CSV.
-        </p>
-      </div>
-      <div className="w-full rounded-xl border-2 border-neutral-200 bg-white p-8 shadow-sm">
-        <UrlInputForm onSubmit={handleSubmit} isLoading={isLoading} />
-        {error && <p className="mx-auto mt-4 max-w-xl text-sm font-semibold text-red-600">{error}</p>}
-      </div>
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#F4F5F7] text-[#14161A]">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(20,22,26,0.055) 0.8px, transparent 0.8px)",
+          backgroundSize: "24px 24px",
+          maskImage: "radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 100%)",
+        }}
+      />
+
+      <header className="relative z-10 mx-auto flex w-full max-w-[1140px] items-center justify-between px-8 py-5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
+            ↳
+          </div>
+          <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+          <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
+            v1.0
+          </span>
+        </div>
+        <nav className="flex items-center gap-6 font-mono text-sm text-[#5C616C]">
+          <span>crawl</span>
+          <span>map</span>
+          <span>export</span>
+        </nav>
+      </header>
+
+      <main className="relative z-10 mx-auto flex w-full max-w-[1140px] flex-1 flex-wrap items-center justify-center gap-x-18 gap-y-14 px-8 py-10 pb-16">
+        <section className="max-w-[520px] flex-1 basis-[380px]">
+          <div className="mb-4.5 font-mono text-xs font-medium uppercase tracking-[0.16em] text-blue-600">
+            Site migration toolkit
+          </div>
+          <h1 className="m-0 mb-5 text-[46px] font-semibold leading-[1.05] tracking-[-0.025em]">
+            Map every old URL
+            <br />
+            to its new home.
+          </h1>
+          <p className="m-0 mb-8 max-w-[440px] text-base leading-relaxed text-[#525762]">
+            Crawl your live site and its replacement, line up the matching pages, and export a clean set of 301
+            redirects — so no link, ranking, or visitor gets lost in the move.
+          </p>
+
+          <div className="max-w-[460px] overflow-hidden rounded-[14px] border border-[#E4E7EC] bg-white shadow-[0_1px_2px_rgba(16,18,22,0.04)]">
+            <div className="flex items-center gap-2 border-b border-[#EDEFF2] bg-[#FBFBFC] px-4 py-2.5">
+              <span className="h-2 w-2 rounded-full bg-[#D5D8DE]" />
+              <span className="h-2 w-2 rounded-full bg-[#D5D8DE]" />
+              <span className="h-2 w-2 rounded-full bg-[#D5D8DE]" />
+              <span className="ml-1.5 font-mono text-xs text-[#8A8F9A]">redirect-map.csv</span>
+            </div>
+            <div className="grid grid-cols-[1fr_22px_1fr] items-center px-4 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#A4A9B4]">
+              <span>Old path</span>
+              <span />
+              <span>New path</span>
+            </div>
+            {[
+              { old: "/about", new: "/company/about" },
+              { old: "/blog/:slug", new: "/resources/:slug" },
+              { old: "/contact", new: "/get-in-touch" },
+              { old: "/pricing", new: "/plans" },
+            ].map((row) => (
+              <div
+                key={row.old}
+                className="grid grid-cols-[1fr_22px_1fr] items-center border-t border-[#F2F3F5] px-4 py-2.5 font-mono text-sm"
+              >
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[#525762]">{row.old}</span>
+                <span className="text-center text-blue-600">→</span>
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[#14161A]">{row.new}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {["Crawls both sites", "Side-by-side mapping", "One-click CSV"].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-[#E4E7EC] bg-white px-3 py-1.5 font-mono text-xs text-[#5C616C]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <section className="min-w-[340px] flex-[0_1_460px]">
+          <UrlInputForm onSubmit={handleSubmit} isLoading={isLoading} />
+          {error && <p className="mx-auto mt-4 max-w-xl text-center text-sm font-semibold text-red-600">{error}</p>}
+        </section>
+      </main>
     </div>
   );
 }
