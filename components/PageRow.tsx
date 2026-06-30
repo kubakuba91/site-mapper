@@ -49,12 +49,12 @@ export default function PageRow({ page, side, status = "unmatched", armed, onCli
           onMarkDropped();
         }
       }}
-      className={`group relative flex cursor-pointer items-stretch overflow-hidden rounded-xl border transition-all ${
+      className={`group relative flex h-fit cursor-pointer items-stretch overflow-hidden rounded-xl border transition-all ${
         armed ? "border-blue-600 ring-2 ring-blue-200" : cardStatusStyles[effectiveStatus]
       }`}
     >
       {side === "new" && target}
-      <div className="min-w-0 flex-1 px-4 py-3.5">
+      <div className="relative z-10 min-w-0 flex-1 px-4 py-3.5">
         <div className="mb-1 truncate font-mono text-[13px] font-semibold text-[#14161A]">{page.path}</div>
         {page.title && <div className="mb-0.5 truncate text-[13.5px] font-medium text-[#2B2F36]">{page.title}</div>}
         {page.description && (
