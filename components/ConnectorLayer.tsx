@@ -55,11 +55,6 @@ export default function ConnectorLayer({ containerRef, mappings }: Props) {
       resizeObserver.observe(column);
     }
 
-    const rowElements = Array.from(container.querySelectorAll<HTMLElement>("[data-row-id]"));
-    for (const row of rowElements) {
-      resizeObserver.observe(row);
-    }
-
     window.addEventListener("resize", recalculate);
 
     return () => {
