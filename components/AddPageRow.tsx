@@ -23,7 +23,7 @@ export default function AddPageRow({ onAdd }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg border-2 border-dashed border-neutral-300 px-4 py-3 text-sm font-bold text-neutral-500 transition-colors hover:border-neutral-400 hover:text-neutral-700"
+        className="shrink-0 rounded-lg border-2 border-dashed border-neutral-300 px-4 py-3 text-sm font-bold text-neutral-500 transition-colors hover:border-neutral-400 hover:text-neutral-700"
       >
         + Add page manually
       </button>
