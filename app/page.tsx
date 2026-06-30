@@ -510,7 +510,13 @@ function Home() {
 }
 
 function HeaderLogo() {
-  return <img src="/Relay301%20(1).png" alt="Relay301" className="h-9 w-auto shrink-0" />;
+  return (
+    <img
+      src="https://raw.githubusercontent.com/kubakuba91/site-mapper/main/Relay301%20(1).png"
+      alt="Relay301"
+      className="h-9 w-auto shrink-0"
+    />
+  );
 }
 
 function DomainLink({ url, label }: { url: string; label: string }) {
