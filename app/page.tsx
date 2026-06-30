@@ -168,11 +168,21 @@ function Home() {
         .filter((suggestion) => selectedSuggestionIds.has(suggestion.id))
         .map((suggestion) => [suggestion.oldPath, suggestion.newPath]),
     );
+    const oldPageByPath = new Map(result.oldResult?.pages.map((page) => [page.path, page]) ?? []);
 
     setMappings((prev) =>
       prev.map((mapping) => {
         const newPath = selectedByOldPath.get(mapping.oldPath);
-        return newPath ? { ...mapping, newPath, status: "matched" as const } : mapping;
+        const oldPage = oldPageByPath.get(mapping.oldPath);
+        return newPath
+          ? {
+              ...mapping,
+              newPath,
+              status: "matched" as const,
+              metadataTitle: oldPage?.title ?? null,
+              metadataDescription: oldPage?.description ?? null,
+            }
+          : mapping;
       }),
     );
     setReviewingSuggestions(false);
@@ -314,7 +324,7 @@ function Home() {
           </div>
           <div className="flex items-center gap-2.5">
             <ShareButton onShare={handleShare} />
-            <ExportButton oldPages={oldResult!.pages} mappings={mappings} />
+            <ExportButton oldPages={oldResult!.pages} newPages={newResult!.pages} mappings={mappings} />
           </div>
         </header>
         <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 border-b border-[#EAECEF] px-8 pb-3.5">
