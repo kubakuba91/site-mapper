@@ -8,11 +8,18 @@ import ShareButton from "@/components/ShareButton";
 import ExportButton from "@/components/ExportButton";
 import ProgressCounter from "@/components/ProgressCounter";
 import { createSession, loadSession, saveMappings } from "@/lib/sessions";
-import type { CrawlResult, Mapping } from "@/lib/types";
+import type { CrawledPage, CrawlResult, Mapping } from "@/lib/types";
 
 type CrawlState = {
   oldResult: CrawlResult | null;
   newResult: CrawlResult | null;
+};
+
+type MappingSuggestion = {
+  id: string;
+  oldPath: string;
+  newPath: string;
+  reason: string;
 };
 
 async function crawl(baseUrl: string, auth?: { username?: string; password?: string }): Promise<CrawlResult> {
@@ -47,6 +54,8 @@ function Home() {
   const [result, setResult] = useState<CrawlState>({ oldResult: null, newResult: null });
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [reviewingSuggestions, setReviewingSuggestions] = useState(false);
+  const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!sessionParam) return;
@@ -61,6 +70,8 @@ function Home() {
         });
         setMappings(session.mappings);
         setSessionId(session.id);
+        setReviewingSuggestions(false);
+        setSelectedSuggestionIds(new Set());
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load shared session");
       } finally {
@@ -91,9 +102,12 @@ function Home() {
         crawl(payload.oldUrl),
         crawl(payload.newUrl, payload.newSiteAuth),
       ]);
+      const suggestions = buildMappingSuggestions(oldResult.pages, newResult.pages);
       setResult({ oldResult, newResult });
       setMappings(oldResult.pages.map((p) => ({ oldPath: p.path, newPath: null, status: "unmatched" as const })));
       setSessionId(null);
+      setSelectedSuggestionIds(new Set(suggestions.map((suggestion) => suggestion.id)));
+      setReviewingSuggestions(suggestions.length > 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Crawl failed");
     } finally {
@@ -134,7 +148,34 @@ function Home() {
     setResult({ oldResult: null, newResult: null });
     setMappings([]);
     setSessionId(null);
+    setReviewingSuggestions(false);
+    setSelectedSuggestionIds(new Set());
     router.replace("/");
+  }
+
+  function toggleSuggestion(id: string) {
+    setSelectedSuggestionIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function applySuggestions(suggestions: MappingSuggestion[]) {
+    const selectedByOldPath = new Map(
+      suggestions
+        .filter((suggestion) => selectedSuggestionIds.has(suggestion.id))
+        .map((suggestion) => [suggestion.oldPath, suggestion.newPath]),
+    );
+
+    setMappings((prev) =>
+      prev.map((mapping) => {
+        const newPath = selectedByOldPath.get(mapping.oldPath);
+        return newPath ? { ...mapping, newPath, status: "matched" as const } : mapping;
+      }),
+    );
+    setReviewingSuggestions(false);
   }
 
   async function handleShare(): Promise<string> {
@@ -166,6 +207,7 @@ function Home() {
 
   if (hasResults) {
     const { oldResult, newResult } = result;
+    const suggestions = buildMappingSuggestions(oldResult!.pages, newResult!.pages);
     let matched = 0;
     let dropped = 0;
     let unmatched = 0;
@@ -173,6 +215,89 @@ function Home() {
       if (m.status === "matched") matched++;
       else if (m.status === "dropped") dropped++;
       else unmatched++;
+    }
+
+    if (reviewingSuggestions) {
+      return (
+        <div className="flex h-screen flex-col bg-white">
+          <header className="flex w-full items-center justify-between px-8 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
+                ↳
+              </div>
+              <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+              <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
+                v1.0
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="border-b border-blue-200 pb-px font-mono text-[13px] text-blue-600"
+            >
+              ↺ Start over
+            </button>
+          </header>
+
+          <div className="flex flex-wrap items-center gap-2.5 border-b border-[#EAECEF] px-8 pb-3.5">
+            <span className="font-mono text-[13.5px] text-[#14161A]">{oldResult!.baseUrl}</span>
+            <span className="font-mono text-blue-600">→</span>
+            <span className="font-mono text-[13.5px] text-[#14161A]">{newResult!.baseUrl}</span>
+            <CrawlErrorsBanner oldResult={oldResult!} newResult={newResult!} />
+          </div>
+
+          <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col overflow-hidden px-8 py-7">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.14em] text-blue-600">
+                  Suggested connections
+                </div>
+                <h1 className="text-2xl font-semibold tracking-tight text-[#14161A]">
+                  Review {suggestions.length} path-ending match{suggestions.length === 1 ? "" : "es"}.
+                </h1>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setReviewingSuggestions(false)}
+                  className="rounded-[10px] border border-[#E2E5EA] bg-white px-4 py-2 font-sans text-[13px] font-semibold text-[#525762] hover:bg-[#F7F8FA]"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySuggestions(suggestions)}
+                  className="rounded-[10px] bg-blue-600 px-4 py-2 font-sans text-[13px] font-semibold text-white shadow-[0_6px_16px_-8px_rgba(37,99,235,0.5)] hover:brightness-95"
+                >
+                  Connect selected ({selectedSuggestionIds.size})
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto border-y border-[#EAECEF]">
+              {suggestions.map((suggestion) => (
+                <label
+                  key={suggestion.id}
+                  className="grid cursor-pointer grid-cols-[28px_minmax(0,1fr)_28px_minmax(0,1fr)_120px] items-center gap-3 border-b border-[#F1F3F5] py-3 text-sm last:border-b-0"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSuggestionIds.has(suggestion.id)}
+                    onChange={() => toggleSuggestion(suggestion.id)}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  <span className="truncate font-mono text-[13px] text-[#525762]">{suggestion.oldPath}</span>
+                  <span className="text-center font-mono text-blue-600">→</span>
+                  <span className="truncate font-mono text-[13px] text-[#14161A]">{suggestion.newPath}</span>
+                  <span className="justify-self-end rounded-full border border-[#E4E7EC] px-2.5 py-1 font-mono text-[11px] text-[#6B7280]">
+                    {suggestion.reason}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </main>
+        </div>
+      );
     }
 
     return (
@@ -339,4 +464,71 @@ function CrawlErrorsBanner({ oldResult, newResult }: { oldResult: CrawlResult; n
       </ul>
     </details>
   );
+}
+
+function buildMappingSuggestions(oldPages: CrawledPage[], newPages: CrawledPage[]): MappingSuggestion[] {
+  const newPagesByKey = new Map<string, CrawledPage[]>();
+
+  for (const page of newPages) {
+    for (const key of pathEndingKeys(page.path)) {
+      const pages = newPagesByKey.get(key) ?? [];
+      pages.push(page);
+      newPagesByKey.set(key, pages);
+    }
+  }
+
+  const suggestions: MappingSuggestion[] = [];
+  const usedOldPaths = new Set<string>();
+  const usedNewPaths = new Set<string>();
+
+  for (const oldPage of oldPages) {
+    if (usedOldPaths.has(oldPage.path)) continue;
+
+    for (const key of pathEndingKeys(oldPage.path)) {
+      const candidates = newPagesByKey.get(key) ?? [];
+      const availableCandidates = candidates.filter((candidate) => !usedNewPaths.has(candidate.path));
+      if (availableCandidates.length !== 1) continue;
+
+      const newPage = availableCandidates[0];
+      suggestions.push({
+        id: `${oldPage.path}->${newPage.path}`,
+        oldPath: oldPage.path,
+        newPath: newPage.path,
+        reason: suggestionReason(key),
+      });
+      usedOldPaths.add(oldPage.path);
+      usedNewPaths.add(newPage.path);
+      break;
+    }
+  }
+
+  return suggestions;
+}
+
+function pathEndingKeys(path: string): string[] {
+  const normalized = normalizeComparablePath(path);
+  if (normalized === "/") return ["exact:/"];
+
+  const segments = normalized.split("/").filter(Boolean);
+  const keys = [`exact:${normalized}`];
+  for (const count of [3, 2, 1]) {
+    if (segments.length >= count) {
+      keys.push(`end:${count}:${segments.slice(-count).join("/")}`);
+    }
+  }
+  return keys;
+}
+
+function normalizeComparablePath(path: string): string {
+  const pathOnly = path.split("?")[0].split("#")[0];
+  const withSlash = pathOnly.startsWith("/") ? pathOnly : `/${pathOnly}`;
+  const trimmed = withSlash.length > 1 && withSlash.endsWith("/") ? withSlash.slice(0, -1) : withSlash;
+  return trimmed.toLowerCase();
+}
+
+function suggestionReason(key: string): string {
+  if (key.startsWith("exact:")) return "same path";
+  if (key.startsWith("end:3:")) return "same ending";
+  if (key.startsWith("end:2:")) return "same ending";
+  return "same slug";
 }
