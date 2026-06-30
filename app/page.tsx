@@ -253,7 +253,7 @@ function Home() {
   if (isLoadingSession) {
     return (
       <div className="flex flex-1 items-center justify-center bg-zinc-50">
-        <p className="text-base font-medium text-neutral-600">Loading shared session...</p>
+        <p className="text-base font-medium text-neutral-600">Loading shared session…</p>
       </div>
     );
   }
@@ -277,10 +277,7 @@ function Home() {
         <div className="flex h-screen flex-col bg-white">
           <header className="flex w-full items-center justify-between px-8 py-3.5">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
-                ↳
-              </div>
-              <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+              <HeaderLogo />
               <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
                 v1.0
               </span>
@@ -359,10 +356,7 @@ function Home() {
       <div className="flex h-screen flex-col bg-white">
         <header className="flex w-full items-center justify-between px-8 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
-              ↳
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+            <HeaderLogo />
             <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
               v1.0
             </span>
@@ -443,10 +437,7 @@ function Home() {
 
       <header className="relative z-10 mx-auto flex w-full max-w-[1140px] items-center justify-between px-8 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.2)]">
-            ↳
-          </div>
-          <span className="text-[15px] font-semibold tracking-tight">Redirect Mapper</span>
+          <HeaderLogo />
           <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
             v1.0
           </span>
@@ -515,6 +506,71 @@ function Home() {
         </section>
       </main>
     </div>
+  );
+}
+
+function HeaderLogo() {
+  return (
+    <svg
+      aria-label="Relay301"
+      role="img"
+      viewBox="0 0 520 160"
+      className="h-9 w-auto shrink-0"
+      fill="none"
+    >
+      <defs>
+        <filter id="relay-glow" x="-40%" y="-60%" width="180%" height="220%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="0 0 0 0 0.06 0 0 0 0 0.38 0 0 0 0 1 0 0 0 0.75 0"
+          />
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <path
+        d="M139 73a61 61 0 1 1-27-50"
+        stroke="#071327"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+      <path
+        d="M50 82l31 31 76-80"
+        stroke="#1267FF"
+        strokeWidth="16"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        filter="url(#relay-glow)"
+      />
+      <path d="M126 30l43-12-10 44-9-19-18-5z" fill="#1267FF" filter="url(#relay-glow)" />
+      <text
+        x="205"
+        y="103"
+        fontFamily="Arial, Helvetica, sans-serif"
+        fontSize="76"
+        fontWeight="700"
+        letterSpacing="0"
+        fill="#071327"
+      >
+        Relay
+      </text>
+      <text
+        x="382"
+        y="103"
+        fontFamily="Arial, Helvetica, sans-serif"
+        fontSize="76"
+        fontWeight="800"
+        letterSpacing="0"
+        fill="#1267FF"
+        filter="url(#relay-glow)"
+      >
+        301
+      </text>
+    </svg>
   );
 }
 
