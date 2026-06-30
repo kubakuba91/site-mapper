@@ -6,6 +6,7 @@ import PageRow from "./PageRow";
 import ConnectorLayer from "./ConnectorLayer";
 import ProgressCounter from "./ProgressCounter";
 import ExportButton from "./ExportButton";
+import AddPageRow from "./AddPageRow";
 
 type Props = {
   oldPages: CrawledPage[];
@@ -13,9 +14,19 @@ type Props = {
   mappings: Mapping[];
   setMappings: Dispatch<SetStateAction<Mapping[]>>;
   headerExtra?: ReactNode;
+  onAddOldPage: (path: string) => void;
+  onAddNewPage: (path: string) => void;
 };
 
-export default function MappingBoard({ oldPages, newPages, mappings, setMappings, headerExtra }: Props) {
+export default function MappingBoard({
+  oldPages,
+  newPages,
+  mappings,
+  setMappings,
+  headerExtra,
+  onAddOldPage,
+  onAddNewPage,
+}: Props) {
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +116,7 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
               />
             );
           })}
+          <AddPageRow onAdd={onAddOldPage} />
         </div>
 
         <div data-scroll-column className="flex flex-col gap-2 overflow-y-auto">
@@ -114,6 +126,7 @@ export default function MappingBoard({ oldPages, newPages, mappings, setMappings
           {newPages.map((page) => (
             <PageRow key={page.path} page={page} side="new" onClick={() => handleNewRowClick(page)} />
           ))}
+          <AddPageRow onAdd={onAddNewPage} />
         </div>
 
         <ConnectorLayer containerRef={containerRef} mappings={mappings} />

@@ -99,6 +99,35 @@ function Home() {
     }
   }
 
+  function normalizePath(raw: string): string {
+    const trimmed = raw.trim();
+    const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return withSlash.length > 1 && withSlash.endsWith("/") ? withSlash.slice(0, -1) : withSlash;
+  }
+
+  function handleAddOldPage(raw: string) {
+    const oldResult = result.oldResult;
+    if (!oldResult) return;
+    const path = normalizePath(raw);
+    if (oldResult.pages.some((p) => p.path === path)) return;
+    const page = { url: `${oldResult.baseUrl}${path}`, path, title: null, description: null, statusCode: 0 };
+    setResult((prev) =>
+      prev.oldResult ? { ...prev, oldResult: { ...prev.oldResult, pages: [...prev.oldResult.pages, page] } } : prev,
+    );
+    setMappings((prev) => [...prev, { oldPath: path, newPath: null, status: "unmatched" as const }]);
+  }
+
+  function handleAddNewPage(raw: string) {
+    const newResult = result.newResult;
+    if (!newResult) return;
+    const path = normalizePath(raw);
+    if (newResult.pages.some((p) => p.path === path)) return;
+    const page = { url: `${newResult.baseUrl}${path}`, path, title: null, description: null, statusCode: 0 };
+    setResult((prev) =>
+      prev.newResult ? { ...prev, newResult: { ...prev.newResult, pages: [...prev.newResult.pages, page] } } : prev,
+    );
+  }
+
   function handleStartOver() {
     setResult({ oldResult: null, newResult: null });
     setMappings([]);
@@ -161,6 +190,8 @@ function Home() {
             mappings={mappings}
             setMappings={setMappings}
             headerExtra={<ShareButton onShare={handleShare} />}
+            onAddOldPage={handleAddOldPage}
+            onAddNewPage={handleAddNewPage}
           />
         </div>
       </div>
