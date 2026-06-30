@@ -187,9 +187,23 @@ function CrawlErrorsBanner({ oldResult, newResult }: { oldResult: CrawlResult; n
   const totalErrors = oldResult.errors.length + newResult.errors.length;
   if (totalErrors === 0) return null;
   return (
-    <p className="text-sm font-semibold text-amber-700">
-      {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load
-      {newResult.errors.length > 0 ? " — staging may need login" : ""}.
-    </p>
+    <details className="text-sm font-semibold text-amber-700">
+      <summary className="cursor-pointer">
+        {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load
+        {newResult.errors.length > 0 ? " — staging may need login" : ""}.
+      </summary>
+      <ul className="mt-1.5 flex flex-col gap-1 pl-4 text-xs font-medium text-amber-800">
+        {oldResult.errors.map((e) => (
+          <li key={`old:${e.url}`} className="truncate">
+            <span className="font-bold">old:</span> {e.url} — {e.reason}
+          </li>
+        ))}
+        {newResult.errors.map((e) => (
+          <li key={`new:${e.url}`} className="truncate">
+            <span className="font-bold">new:</span> {e.url} — {e.reason}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
