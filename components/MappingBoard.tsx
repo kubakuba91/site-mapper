@@ -32,8 +32,22 @@ export default function MappingBoard({
     return map;
   }, [mappings]);
 
+  const oldPageByPath = useMemo(() => {
+    const map = new Map<string, CrawledPage>();
+    for (const page of oldPages) map.set(page.path, page);
+    return map;
+  }, [oldPages]);
+
   function updateMapping(oldPath: string, patch: Partial<Mapping>) {
     setMappings((prev) => prev.map((m) => (m.oldPath === oldPath ? { ...m, ...patch } : m)));
+  }
+
+  function metadataPatchForOldPath(oldPath: string): Partial<Mapping> {
+    const oldPage = oldPageByPath.get(oldPath);
+    return {
+      metadataTitle: oldPage?.title ?? null,
+      metadataDescription: oldPage?.description ?? null,
+    };
   }
 
   function handleOldRowClick(page: CrawledPage) {
@@ -41,7 +55,7 @@ export default function MappingBoard({
     if (!mapping) return;
 
     if (mapping.status === "matched") {
-      updateMapping(page.path, { status: "unmatched", newPath: null });
+      updateMapping(page.path, { status: "unmatched", newPath: null, metadataTitle: null, metadataDescription: null });
       setArmedOldPath(null);
       return;
     }
@@ -51,7 +65,7 @@ export default function MappingBoard({
 
   function handleNewRowClick(page: CrawledPage) {
     if (!armedOldPath) return;
-    updateMapping(armedOldPath, { status: "matched", newPath: page.path });
+    updateMapping(armedOldPath, { status: "matched", newPath: page.path, ...metadataPatchForOldPath(armedOldPath) });
     setArmedOldPath(null);
   }
 
@@ -59,9 +73,9 @@ export default function MappingBoard({
     const mapping = mappingByOldPath.get(page.path);
     if (!mapping) return;
     if (mapping.status === "dropped") {
-      updateMapping(page.path, { status: "unmatched", newPath: null });
+      updateMapping(page.path, { status: "unmatched", newPath: null, metadataTitle: null, metadataDescription: null });
     } else {
-      updateMapping(page.path, { status: "dropped", newPath: null });
+      updateMapping(page.path, { status: "dropped", newPath: null, metadataTitle: null, metadataDescription: null });
     }
     if (armedOldPath === page.path) setArmedOldPath(null);
   }
