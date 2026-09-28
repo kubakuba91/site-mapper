@@ -1,13 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import UrlInputForm, { type SubmitPayload } from "@/components/UrlInputForm";
 import MappingBoard from "@/components/MappingBoard";
 import ShareButton from "@/components/ShareButton";
 import ExportButton from "@/components/ExportButton";
 import ProgressCounter from "@/components/ProgressCounter";
-import { createSession, loadSession, saveMappings } from "@/lib/sessions";
+import { createSession, loadSession } from "@/lib/sessions";
+import { useSessionSave } from "@/lib/use-session-save";
+import { manualPage } from "@/lib/page-url";
+import Image from "next/image";
+import logo from "@/public/relay301.png";
 import type { CrawledPage, CrawlResult, Mapping } from "@/lib/types";
 
 type CrawlState = {
@@ -54,24 +58,35 @@ function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CrawlState>({ oldResult: null, newResult: null });
   const [mappings, setMappings] = useState<Mapping[]>([]);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const snapshot = useMemo(() => result.oldResult && result.newResult ? {
+    oldBaseUrl: result.oldResult.baseUrl, newBaseUrl: result.newResult.baseUrl,
+    oldPages: result.oldResult.pages, newPages: result.newResult.pages, mappings,
+  } : null, [result, mappings]);
+  const { sessionId, saveStatus, saveError, flush, activate, clear } = useSessionSave(snapshot);
+  const ownSession = useRef<string | null>(null);
+  const [recrawlAuthOpen, setRecrawlAuthOpen] = useState(false);
+  const [recrawlUsername, setRecrawlUsername] = useState("");
+  const [recrawlPassword, setRecrawlPassword] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
   const [lastSubmitPayload, setLastSubmitPayload] = useState<SubmitPayload | null>(null);
   const [reviewingSuggestions, setReviewingSuggestions] = useState(false);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!sessionParam) return;
+    if (!sessionParam || ownSession.current === sessionParam) return;
     let cancelled = false;
     (async () => {
       try {
-        const session = await loadSession(sessionParam);
+        const token = new URLSearchParams(window.location.hash.slice(1)).get("key") ?? "";
+        const session = await loadSession(sessionParam, token);
+        const data = session.snapshot;
         if (cancelled) return;
         setResult({
-          oldResult: { baseUrl: session.oldBaseUrl, pages: session.oldPages, errors: [] },
-          newResult: { baseUrl: session.newBaseUrl, pages: session.newPages, errors: [] },
+          oldResult: { baseUrl: data.oldBaseUrl, pages: data.oldPages, errors: [] },
+          newResult: { baseUrl: data.newBaseUrl, pages: data.newPages, errors: [] },
         });
-        setMappings(session.mappings);
-        setSessionId(session.id);
+        setMappings(data.mappings);
+        activate(session, data);
         setLastSubmitPayload(null);
         setReviewingSuggestions(false);
         setSelectedSuggestionIds(new Set());
@@ -84,18 +99,7 @@ function Home() {
     return () => {
       cancelled = true;
     };
-  }, [sessionParam]);
-
-  // Auto-save mapping edits to the shared session, debounced.
-  useEffect(() => {
-    if (!sessionId) return;
-    const timer = setTimeout(() => {
-      saveMappings(sessionId, mappings).catch(() => {
-        /* best-effort autosave; user can still export locally */
-      });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [sessionId, mappings]);
+  }, [sessionParam, activate]);
 
   async function handleSubmit(payload: SubmitPayload) {
     setIsLoading(true);
@@ -108,7 +112,9 @@ function Home() {
       const suggestions = buildMappingSuggestions(oldResult.pages, newResult.pages);
       setResult({ oldResult, newResult });
       setMappings(oldResult.pages.map((p) => ({ oldPath: p.path, newPath: null, status: "unmatched" as const })));
-      setSessionId(null);
+      clear();
+      ownSession.current = null;
+      router.replace("/");
       setLastSubmitPayload(payload);
       setSelectedSuggestionIds(new Set(suggestions.map((suggestion) => suggestion.id)));
       setReviewingSuggestions(suggestions.length > 0);
@@ -119,18 +125,13 @@ function Home() {
     }
   }
 
-  function normalizePath(raw: string): string {
-    const trimmed = raw.trim();
-    const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-    return withSlash.length > 1 && withSlash.endsWith("/") ? withSlash.slice(0, -1) : withSlash;
-  }
-
   function handleAddOldPage(raw: string) {
     const oldResult = result.oldResult;
     if (!oldResult) return;
-    const path = normalizePath(raw);
+    const page = manualPage(raw, oldResult.baseUrl);
+    const path = page.path;
     if (oldResult.pages.some((p) => p.path === path)) return;
-    const page = { url: `${oldResult.baseUrl}${path}`, path, title: null, description: null, statusCode: 0 };
+
     setResult((prev) =>
       prev.oldResult ? { ...prev, oldResult: { ...prev.oldResult, pages: [...prev.oldResult.pages, page] } } : prev,
     );
@@ -140,18 +141,22 @@ function Home() {
   function handleAddNewPage(raw: string) {
     const newResult = result.newResult;
     if (!newResult) return;
-    const path = normalizePath(raw);
+    const page = manualPage(raw, newResult.baseUrl);
+    const path = page.path;
     if (newResult.pages.some((p) => p.path === path)) return;
-    const page = { url: `${newResult.baseUrl}${path}`, path, title: null, description: null, statusCode: 0 };
+
     setResult((prev) =>
       prev.newResult ? { ...prev, newResult: { ...prev.newResult, pages: [...prev.newResult.pages, page] } } : prev,
     );
   }
 
-  function handleStartOver() {
+  async function handleStartOver() {
+    if (isRecrawling || isSharing) return;
+    try { await flush(); } catch { return; }
+    ownSession.current = null;
     setResult({ oldResult: null, newResult: null });
     setMappings([]);
-    setSessionId(null);
+    clear();
     setLastSubmitPayload(null);
     setReviewingSuggestions(false);
     setSelectedSuggestionIds(new Set());
@@ -168,7 +173,7 @@ function Home() {
       const currentNewResult = result.newResult;
       const currentMappings = mappings;
       const matchedOldPaths = new Set(
-        currentMappings.filter((mapping) => mapping.status === "matched").map((mapping) => mapping.oldPath),
+        currentMappings.filter((mapping) => mapping.status !== "unmatched").map((mapping) => mapping.oldPath),
       );
       const matchedNewPaths = new Set(
         currentMappings
@@ -177,8 +182,17 @@ function Home() {
       );
       const [freshOldResult, freshNewResult] = await Promise.all([
         crawl(currentOldResult.baseUrl),
-        crawl(currentNewResult.baseUrl, lastSubmitPayload?.newSiteAuth),
+        crawl(currentNewResult.baseUrl, recrawlAuthOpen ? { username: recrawlUsername, password: recrawlPassword } : lastSubmitPayload?.newSiteAuth),
       ]);
+      if (freshNewResult.errors.some(e => /HTTP (401|403)/.test(e.reason))) {
+        setRecrawlAuthOpen(true);
+        throw new Error("Staging requires credentials. Enter them below and recrawl; your board has been preserved.");
+      }
+      if ([freshOldResult, freshNewResult].some(r => !r.pages.some(p => p.statusCode >= 200 && p.statusCode < 400))) {
+        throw new Error("Recrawl could not load a site. Your existing board has been preserved.");
+      }
+      currentOldResult.pages.filter(p => p.statusCode === 0).forEach(p => matchedOldPaths.add(p.path));
+      currentNewResult.pages.filter(p => p.statusCode === 0).forEach(p => matchedNewPaths.add(p.path));
       const oldPages = mergeRecrawledPages(freshOldResult.pages, currentOldResult.pages, matchedOldPaths);
       const newPages = mergeRecrawledPages(freshNewResult.pages, currentNewResult.pages, matchedNewPaths);
 
@@ -187,10 +201,8 @@ function Home() {
         newResult: { ...freshNewResult, pages: newPages },
       });
       setMappings(mergeMappingsAfterRecrawl(currentMappings, oldPages));
-      setSessionId(null);
       setReviewingSuggestions(false);
       setSelectedSuggestionIds(new Set());
-      router.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Recrawl failed");
     } finally {
@@ -234,20 +246,20 @@ function Home() {
   }
 
   async function handleShare(): Promise<string> {
-    if (!result.oldResult || !result.newResult) throw new Error("Nothing to share yet");
-    let id = sessionId;
-    if (!id) {
-      id = await createSession({
-        oldBaseUrl: result.oldResult.baseUrl,
-        newBaseUrl: result.newResult.baseUrl,
-        oldPages: result.oldResult.pages,
-        newPages: result.newResult.pages,
-        mappings,
-      });
-      setSessionId(id);
-      router.replace(`/?session=${id}`);
-    }
-    return `${window.location.origin}${window.location.pathname}?session=${id}`;
+    if (!snapshot) throw new Error("Nothing to share yet");
+    setIsSharing(true);
+    try {
+      if (!sessionId) {
+        const access = await createSession(snapshot);
+        ownSession.current = access.id;
+        activate(access, snapshot);
+        const url = `${window.location.origin}/?session=${access.id}#key=${access.token}`;
+        router.replace(url);
+        return url;
+      }
+      await flush();
+      return window.location.href;
+    } finally { setIsSharing(false); }
   }
 
   if (isLoadingSession) {
@@ -275,7 +287,7 @@ function Home() {
     if (reviewingSuggestions) {
       return (
         <div className="flex h-screen flex-col bg-white">
-          <header className="flex w-full items-center justify-between px-8 py-3.5">
+          <header className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
             <div className="flex items-center gap-2.5">
               <HeaderLogo />
               <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
@@ -285,6 +297,7 @@ function Home() {
             <button
               type="button"
               onClick={handleStartOver}
+              disabled={isRecrawling || isSharing || saveStatus === "Saving…"}
               className="border-b border-blue-200 pb-px font-mono text-[13px] text-blue-600"
             >
               ↺ Start over
@@ -354,18 +367,18 @@ function Home() {
 
     return (
       <div className="flex h-screen flex-col bg-white">
-        <header className="flex w-full items-center justify-between px-8 py-3.5">
+        <header className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
           <div className="flex items-center gap-2.5">
             <HeaderLogo />
             <span className="rounded-md border border-[#E2E5EA] bg-white px-1.5 py-0.5 font-mono text-xs text-[#8A8F9A]">
               v1.0
             </span>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
               onClick={handleRecrawl}
-              disabled={isRecrawling}
+              disabled={isRecrawling || isSharing}
               className="inline-flex items-center gap-2 rounded-[10px] border border-[#E2E5EA] bg-white px-3.5 py-2 font-sans text-[13px] font-medium text-[#14161A] transition-colors hover:bg-[#F7F8FA] disabled:opacity-50"
             >
               <svg
@@ -385,7 +398,7 @@ function Home() {
               </svg>
               {isRecrawling ? "Recrawling..." : "Recrawl"}
             </button>
-            <ShareButton onShare={handleShare} />
+            <ShareButton onShare={handleShare} disabled={isRecrawling} />
             <ExportButton oldPages={oldResult!.pages} newPages={newResult!.pages} mappings={mappings} />
           </div>
         </header>
@@ -403,13 +416,24 @@ function Home() {
             <button
               type="button"
               onClick={handleStartOver}
+              disabled={isRecrawling || isSharing || saveStatus === "Saving…"}
               className="border-b border-blue-200 pb-px font-mono text-[13px] text-blue-600"
             >
               ↺ Start over
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden">
+        <div className="px-4 pb-2 text-xs sm:px-8" role="status" aria-live="polite">
+          {sessionId && <p>{saveStatus}</p>}
+          {saveError && <p className="text-red-700">{saveError}</p>}
+          <button type="button" onClick={() => setRecrawlAuthOpen(v => !v)} className="mt-1 text-blue-700 underline">Staging credentials for recrawl</button>
+          {recrawlAuthOpen && <div className="mt-2 flex flex-wrap gap-2">
+            <input aria-label="Staging username" placeholder="Username" value={recrawlUsername} onChange={e => setRecrawlUsername(e.target.value)} className="rounded border p-2" />
+            <input aria-label="Staging password" type="password" placeholder="Password" value={recrawlPassword} onChange={e => setRecrawlPassword(e.target.value)} className="rounded border p-2" />
+            <span>Credentials stay in this tab and are never shared.</span>
+          </div>}
+        </div>
+        <fieldset disabled={isRecrawling || isSharing} aria-busy={isRecrawling || isSharing} className="min-h-0 min-w-0 flex-1 overflow-hidden disabled:opacity-60">
           <MappingBoard
             oldPages={oldResult!.pages}
             newPages={newResult!.pages}
@@ -418,7 +442,7 @@ function Home() {
             onAddOldPage={handleAddOldPage}
             onAddNewPage={handleAddNewPage}
           />
-        </div>
+        </fieldset>
       </div>
     );
   }
@@ -500,7 +524,7 @@ function Home() {
           </div>
         </section>
 
-        <section className="min-w-[340px] flex-[0_1_460px]">
+        <section className="w-full min-w-0 flex-[0_1_460px]">
           <UrlInputForm onSubmit={handleSubmit} isLoading={isLoading} />
           {error && <p className="mx-auto mt-4 max-w-xl text-center text-sm font-semibold text-red-600">{error}</p>}
         </section>
@@ -511,8 +535,9 @@ function Home() {
 
 function HeaderLogo() {
   return (
-    <img
-      src="https://raw.githubusercontent.com/kubakuba91/site-mapper/main/Relay301%20(1).png"
+    <Image
+      src={logo}
+      priority
       alt="Relay301"
       className="h-9 w-auto shrink-0"
     />
@@ -522,7 +547,7 @@ function HeaderLogo() {
 function DomainLink({ url, label }: { url: string; label: string }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
-      <span className="truncate font-mono text-[13.5px] text-[#14161A]">{url}</span>
+      <span className="break-all font-mono text-[13.5px] text-[#14161A]">{url}</span>
       <a
         href={url}
         target="_blank"
@@ -551,15 +576,17 @@ function DomainLink({ url, label }: { url: string; label: string }) {
 
 function CrawlErrorsBanner({ oldResult, newResult }: { oldResult: CrawlResult; newResult: CrawlResult }) {
   const totalErrors = oldResult.errors.length + newResult.errors.length;
-  if (totalErrors === 0) return null;
+  const warnings = [...(oldResult.warnings ?? []), ...(newResult.warnings ?? [])];
+  if (totalErrors === 0 && !warnings.length) return null;
   return (
     <details className="group">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-[7px] border border-[#F6E0B8] bg-[#FEF3E2] px-2.5 py-1 font-mono text-xs text-[#B4540B]">
         <span className="h-1.5 w-1.5 rounded-full bg-[#E0922F]" />
-        {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load
+        {totalErrors} page{totalErrors === 1 ? "" : "s"} failed to load; {warnings.length} crawl notice{warnings.length === 1 ? "" : "s"}
         {newResult.errors.length > 0 ? " — staging may need login" : ""}.
       </summary>
       <ul className="mt-1.5 flex flex-col gap-1 pl-4 text-xs font-medium text-amber-800">
+        {warnings.map((warning, i) => <li key={`warning:${i}`}>{warning}</li>)}
         {oldResult.errors.map((e) => (
           <li key={`old:${e.url}`} className="truncate">
             <span className="font-bold">old:</span> {e.url} — {e.reason}

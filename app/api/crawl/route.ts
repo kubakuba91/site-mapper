@@ -1,38 +1,47 @@
 import { NextResponse } from "next/server";
 import { crawlSite } from "@/lib/crawler";
-import type { CrawlRequestBody, CrawlResult } from "@/lib/types";
+import { readSmallJson, validateCrawlRequest } from "@/lib/crawl-request";
 
+export const runtime = "nodejs";
 export const maxDuration = 300;
+let active = 0;
+let starts: number[] = [];
 
 export async function POST(request: Request): Promise<NextResponse> {
-  let body: CrawlRequestBody;
+  let body;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const baseUrl = body.baseUrl?.trim();
-  if (!baseUrl) {
-    return NextResponse.json({ error: "baseUrl is required" }, { status: 400 });
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(baseUrl);
-  } catch {
-    return NextResponse.json({ error: "baseUrl must be a valid URL" }, { status: 400 });
-  }
-  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-    return NextResponse.json({ error: "baseUrl must use http or https" }, { status: 400 });
-  }
-
-  try {
-    const { pages, errors } = await crawlSite(parsedUrl.toString(), body.auth);
-    const result: CrawlResult = { baseUrl: parsedUrl.toString(), pages, errors };
-    return NextResponse.json(result);
+    body = validateCrawlRequest(await readSmallJson(request));
   } catch (err) {
-    const reason = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: `Crawl failed: ${reason}` }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+  starts = starts.filter((time) => time > Date.now() - 60_000);
+  if (active >= 4 || starts.length >= 20)
+    return NextResponse.json(
+      { error: "Crawler is busy. Please retry shortly." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  active++;
+  starts.push(Date.now());
+  try {
+    const result = await crawlSite(body.baseUrl, body.auth, {
+      signal: request.signal,
+    });
+    return NextResponse.json({ baseUrl: body.baseUrl, ...result });
+  } catch (err) {
+    const timedOut =
+      err instanceof Error && ["AbortError", "TimeoutError"].includes(err.name);
+    return NextResponse.json(
+      {
+        error: timedOut
+          ? "Crawl stopped or exceeded its time limit. Try a smaller site."
+          : "Crawl failed. Please check the site URL.",
+      },
+      { status: timedOut ? 504 : 502 },
+    );
+  } finally {
+    active--;
   }
 }

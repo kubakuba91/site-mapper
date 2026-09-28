@@ -18,13 +18,15 @@ type Props = {
 const cardStatusStyles: Record<MappingStatus, string> = {
   matched: "border-green-300 bg-green-50/40",
   dropped: "border-neutral-300 bg-neutral-100 opacity-70",
-  unmatched: "border-[#E4E7EC] bg-white hover:border-blue-300 hover:shadow-[0_8px_22px_-14px_rgba(16,18,22,0.30)] hover:-translate-y-px",
+  unmatched:
+    "border-[#E4E7EC] bg-white hover:border-blue-300 hover:shadow-[0_8px_22px_-14px_rgba(16,18,22,0.30)] hover:-translate-y-px",
 };
 
 const targetStatusStyles: Record<MappingStatus, string> = {
   matched: "bg-green-100 text-green-700",
   dropped: "bg-neutral-200 text-neutral-500",
-  unmatched: "bg-[#FBFBFC] text-[#C2C7CF] group-hover:bg-blue-600 group-hover:text-white",
+  unmatched:
+    "bg-[#FBFBFC] text-[#C2C7CF] group-hover:bg-blue-600 group-hover:text-white",
 };
 
 export default function PageRow({
@@ -42,36 +44,50 @@ export default function PageRow({
   const effectiveStatus = side === "old" ? status : "unmatched";
 
   const target = (
-    <div
-      title={side === "old" ? "Map to a new-site page" : "Receive a mapping from an old-site page"}
-      className={`flex items-center justify-center font-mono text-[11px] transition-colors ${
-        side === "old" ? "border-l border-[#EDEFF2]" : "border-r border-[#EDEFF2]"
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${side === "old" ? (status === "matched" ? "Remove mapping from" : "Select source") : "Map selected source to"} ${page.path}`}
+      aria-pressed={side === "old" ? Boolean(armed) : undefined}
+      title={
+        side === "old"
+          ? "Map to a new-site page"
+          : "Receive a mapping from an old-site page"
+      }
+      className={`flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-blue-600 disabled:cursor-wait font-mono text-[11px] transition-colors ${
+        side === "old"
+          ? "border-l border-[#EDEFF2]"
+          : "border-r border-[#EDEFF2]"
       } ${targetStatusStyles[effectiveStatus]}`}
     >
-      ■
-    </div>
+      <span aria-hidden="true">
+        {side === "old" ? (status === "matched" ? "×" : "→") : "←"}
+      </span>
+    </button>
   );
 
   return (
     <div
       data-row-id={`${side}:${page.path}`}
-      onClick={onClick}
-      onContextMenu={(e) => {
-        if (side === "old" && onMarkDropped) {
-          e.preventDefault();
-          onMarkDropped();
-        }
-      }}
-      className={`group relative grid shrink-0 cursor-pointer overflow-hidden rounded-xl border transition-all ${
-        side === "old" ? "grid-cols-[minmax(0,1fr)_42px]" : "grid-cols-[42px_minmax(0,1fr)]"
+      className={`group relative grid shrink-0 overflow-hidden rounded-xl border transition-all ${
+        side === "old"
+          ? "grid-cols-[minmax(0,1fr)_42px]"
+          : "grid-cols-[42px_minmax(0,1fr)]"
       } ${
-        armed ? "border-blue-600 ring-2 ring-blue-200" : cardStatusStyles[effectiveStatus]
+        armed
+          ? "border-blue-600 ring-2 ring-blue-200"
+          : cardStatusStyles[effectiveStatus]
       }`}
     >
       {side === "new" && target}
-      <div className="relative z-10 min-w-0 flex-1 px-4 py-3.5">
+      <div className="relative z-10 min-w-0 flex-1 px-4 pt-3.5 pb-10">
         <div className="mb-1 flex min-w-0 items-center gap-1.5">
-          <div className="truncate font-mono text-[13px] font-semibold text-[#14161A]">{page.path}</div>
+          <div
+            title={page.path}
+            className="break-all font-mono text-[13px] font-semibold text-[#14161A]"
+          >
+            {page.path}
+          </div>
           <PageOpenLink url={page.url} />
           {side === "new" && typeof matchConfidence === "number" && (
             <span className="ml-auto shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[11px] font-bold text-blue-700">
@@ -79,10 +95,16 @@ export default function PageRow({
             </span>
           )}
         </div>
-        {page.title && <div className="mb-0.5 truncate text-[13.5px] font-medium text-[#2B2F36]">{page.title}</div>}
+        {page.title && (
+          <div className="mb-0.5 truncate text-[13.5px] font-medium text-[#2B2F36]">
+            {page.title}
+          </div>
+        )}
         {page.description && (
-          <div
-            className={`text-[12.5px] text-[#9298A2] ${expanded ? "" : "truncate"}`}
+          <button
+            type="button"
+            aria-expanded={expanded}
+            className={`pointer-events-auto w-full text-left text-[12.5px] text-[#9298A2] ${expanded ? "" : "truncate"}`}
             onClick={(e) => {
               e.stopPropagation();
               setExpanded((v) => !v);
@@ -90,10 +112,12 @@ export default function PageRow({
             title={page.description}
           >
             {page.description}
-          </div>
+          </button>
         )}
         {page.statusCode >= 400 && (
-          <div className="mt-0.5 text-xs font-bold text-red-600">HTTP {page.statusCode}</div>
+          <div className="mt-0.5 text-xs font-bold text-red-600">
+            HTTP {page.statusCode}
+          </div>
         )}
         {side === "new" && mappedOldPaths.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -113,7 +137,7 @@ export default function PageRow({
                       e.stopPropagation();
                       onRemoveMappedOldPath(oldPath);
                     }}
-                    className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-green-700 opacity-0 transition hover:bg-green-200 focus:opacity-100 group-hover/badge:opacity-100"
+                    className="pointer-events-auto inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-green-700 transition hover:bg-green-200"
                   >
                     <span aria-hidden="true" className="leading-none">
                       ×
@@ -136,16 +160,16 @@ export default function PageRow({
         )}
       </div>
       {side === "old" && target}
-      {side === "old" && status === "unmatched" && onMarkDropped && (
+      {side === "old" && status !== "matched" && onMarkDropped && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onMarkDropped();
           }}
-          className="absolute right-[48px] top-2 hidden rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-bold text-neutral-700 hover:bg-neutral-300 group-hover:block"
+          className="absolute right-[48px] bottom-2 z-20 rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-bold text-neutral-700 hover:bg-neutral-300"
         >
-          drop
+          {status === "dropped" ? "Restore" : "Drop"}
         </button>
       )}
     </div>
@@ -161,7 +185,7 @@ function PageOpenLink({ url }: { url: string }) {
       aria-label={`Open page: ${url}`}
       title={`Open page: ${url}`}
       onClick={(e) => e.stopPropagation()}
-      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-[#A4A9B4] transition hover:border-[#DDE1E7] hover:bg-[#F7F8FA] hover:text-blue-600"
+      className="pointer-events-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-[#A4A9B4] transition hover:border-[#DDE1E7] hover:bg-[#F7F8FA] hover:text-blue-600"
     >
       <svg
         aria-hidden="true"

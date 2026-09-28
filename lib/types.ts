@@ -12,6 +12,7 @@ export type CrawlResult = {
   baseUrl: string;
   pages: CrawledPage[];
   errors: CrawlError[];
+  warnings?: string[];
 };
 
 export type BasicAuth = { username?: string; password?: string };
