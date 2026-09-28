@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { BasicAuth } from "@/lib/types";
+
+const subscribe = () => () => {};
 
 export type SubmitPayload = {
   oldUrl: string;
@@ -18,6 +20,7 @@ const inputClasses =
   "w-full rounded-[10px] border border-[#E2E5EA] bg-white px-3.5 py-3 font-mono text-sm text-[#14161A] outline-none transition-shadow placeholder:text-[#A4A9B4] focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10";
 
 export default function UrlInputForm({ onSubmit, isLoading }: Props) {
+  const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [oldUrl, setOldUrl] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
@@ -57,6 +60,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
           </div>
           <input
             id="oldUrl"
+            disabled={!hydrated || isLoading}
             type="url"
             required
             placeholder="https://old-site.com"
@@ -75,6 +79,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
           </div>
           <input
             id="newUrl"
+            disabled={!hydrated || isLoading}
             type="url"
             required
             placeholder="https://staging.new-site.com"
@@ -106,6 +111,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
             <div className="flex flex-wrap gap-3">
               <input
                 type="text"
+                aria-label="Staging username"
                 placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -113,6 +119,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
               />
               <input
                 type="password"
+                aria-label="Staging password"
                 placeholder="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -124,7 +131,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={!hydrated || isLoading}
           className="mt-1 flex w-full items-center justify-center gap-2 rounded-[11px] bg-blue-600 py-3.5 text-base font-semibold text-white shadow-[0_8px_20px_-8px_rgba(37,99,235,0.4)] transition-[filter,transform] hover:brightness-95 active:translate-y-px disabled:opacity-50"
         >
           {isLoading ? "Crawling…" : "Crawl both sites"}
@@ -132,7 +139,7 @@ export default function UrlInputForm({ onSubmit, isLoading }: Props) {
         </button>
 
         <p className="mt-1 text-center font-mono text-xs leading-relaxed text-[#A4A9B4]">
-          Outputs a CSV of 301 redirects — ready for Nginx, Apache or Vercel.
+          Exports a redirect mapping CSV. Convert it to your hosting platform’s configuration before deploying.
         </p>
       </form>
     </div>

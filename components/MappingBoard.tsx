@@ -29,6 +29,7 @@ export default function MappingBoard({
   onAddOldPage,
   onAddNewPage,
 }: Props) {
+  const [mobilePane, setMobilePane] = useState<"old" | "new">("old");
   const [armedOldPath, setArmedOldPath] = useState<string | null>(null);
   const [showAllNewPages, setShowAllNewPages] = useState(false);
   const [newPageSearch, setNewPageSearch] = useState("");
@@ -120,6 +121,7 @@ export default function MappingBoard({
       return;
     }
 
+    setMobilePane("new");
     setArmedOldPath((current) => {
       const next = current === page.path ? null : page.path;
       setShowAllNewPages(false);
@@ -129,6 +131,7 @@ export default function MappingBoard({
 
   function handleNewRowClick(page: CrawledPage) {
     if (!armedOldPath) return;
+    setMobilePane("old");
     updateMapping(armedOldPath, { status: "matched", newPath: page.path, ...metadataPatchForOldPath(armedOldPath) });
     setArmedOldPath(null);
     setShowAllNewPages(false);
@@ -151,9 +154,14 @@ export default function MappingBoard({
   }
 
   return (
-    <div className="relative isolate flex h-full gap-9 overflow-hidden px-8 pb-8">
-      <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
-        <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
+    <div className="relative isolate flex h-full min-h-0 flex-col gap-3 overflow-hidden px-4 pb-4 sm:flex-row sm:gap-9 sm:px-8 sm:pb-8">
+      <nav aria-label="Mapping panels" className="flex shrink-0 gap-2 sm:hidden">
+        <button type="button" aria-pressed={mobilePane === "old"} onClick={() => setMobilePane("old")} className="flex-1 rounded border px-3 py-2">Old pages</button>
+        <button type="button" aria-pressed={mobilePane === "new"} onClick={() => setMobilePane("new")} className="flex-1 rounded border px-3 py-2">New pages</button>
+      </nav>
+      <p role="status" className="sr-only">{armedOldPath ? `Selected ${armedOldPath}. Choose a new page.` : "Select an old page to map it."}</p>
+      <div data-scroll-column className={`relative z-10 min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto ${mobilePane === "old" ? "flex" : "hidden"} sm:flex`}>
+        <div className="sticky top-0 z-10 mb-1 flex flex-wrap items-center gap-2 bg-white py-2">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">Old site</span>
             <span className="rounded-full border border-[#E4E7EC] bg-white px-2.5 py-0.5 font-mono text-[11px] text-[#5C616C]">
@@ -197,8 +205,8 @@ export default function MappingBoard({
         <AddPageRow onAdd={onAddOldPage} />
       </div>
 
-      <div data-scroll-column className="relative z-10 flex flex-1 flex-col gap-2.5 overflow-y-auto">
-        <div className="sticky top-0 z-10 mb-1 flex items-center gap-2 bg-white py-2">
+      <div data-scroll-column className={`relative z-10 min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto ${mobilePane === "new" ? "flex" : "hidden"} sm:flex`}>
+        <div className="sticky top-0 z-10 mb-1 flex flex-wrap items-center gap-2 bg-white py-2">
           <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-[#8A8F9A]">
             {armedOldPage && !showAllNewPages ? "Suggested matches" : "New site"}
           </span>

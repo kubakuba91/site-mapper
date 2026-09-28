@@ -7,6 +7,7 @@ type Props = {
 };
 
 export default function AddPageRow({ onAdd }: Props) {
+  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
 
@@ -14,8 +15,13 @@ export default function AddPageRow({ onAdd }: Props) {
     e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) return;
-    onAdd(trimmed);
-    setValue("");
+    try {
+      onAdd(trimmed);
+      setValue("");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid page path");
+    }
   }
 
   if (!open) {
@@ -31,8 +37,9 @@ export default function AddPageRow({ onAdd }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
       <input
+        aria-label="Page path"
         type="text"
         autoFocus
         placeholder="/path/to/page"
@@ -44,7 +51,7 @@ export default function AddPageRow({ onAdd }: Props) {
             setValue("");
           }
         }}
-        className="flex-1 rounded-lg border-2 border-neutral-300 px-3 py-2 font-mono text-sm text-neutral-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        className="min-w-0 flex-1 rounded-lg border-2 border-neutral-300 px-3 py-2 font-mono text-sm text-neutral-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
       />
       <button
         type="submit"
@@ -62,6 +69,11 @@ export default function AddPageRow({ onAdd }: Props) {
       >
         Cancel
       </button>
+      {error && (
+        <p role="alert" className="w-full text-sm text-red-700">
+          {error}
+        </p>
+      )}
     </form>
   );
 }

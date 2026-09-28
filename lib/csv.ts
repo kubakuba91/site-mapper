@@ -1,13 +1,19 @@
 import type { CrawledPage, Mapping } from "./types";
 
-function escapeCsvField(value: string): string {
-  if (/[",\n]/.test(value)) {
+function escapeCsvField(value: string, spreadsheetSafe: boolean): string {
+  if (spreadsheetSafe && /^[\s\uFEFF]*[=+@-]/.test(value)) value = `'${value}`;
+  if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
 }
 
-export function buildExportCsv(oldPages: CrawledPage[], newPages: CrawledPage[], mappings: Mapping[]): string {
+export function buildExportCsv(
+  oldPages: CrawledPage[],
+  newPages: CrawledPage[],
+  mappings: Mapping[],
+  spreadsheetSafe = true,
+): string {
   const header = [
     "old_url",
     "old_title",
@@ -23,9 +29,16 @@ export function buildExportCsv(oldPages: CrawledPage[], newPages: CrawledPage[],
   const rows = oldPages.map((page) => {
     const mapping = mappings.find((m) => m.oldPath === page.path);
     const status = mapping?.status ?? "unmatched";
-    const newPage = status === "matched" && mapping?.newPath ? newPageByPath.get(mapping.newPath) : null;
-    const metadataTitle = status === "matched" ? mapping?.metadataTitle ?? page.title ?? "" : "";
-    const metadataDescription = status === "matched" ? mapping?.metadataDescription ?? page.description ?? "" : "";
+    const newPage =
+      status === "matched" && mapping?.newPath
+        ? newPageByPath.get(mapping.newPath)
+        : null;
+    const metadataTitle =
+      status === "matched" ? (mapping?.metadataTitle ?? page.title ?? "") : "";
+    const metadataDescription =
+      status === "matched"
+        ? (mapping?.metadataDescription ?? page.description ?? "")
+        : "";
     return [
       page.url,
       page.title ?? "",
@@ -36,7 +49,7 @@ export function buildExportCsv(oldPages: CrawledPage[], newPages: CrawledPage[],
       metadataTitle,
       metadataDescription,
       status,
-    ].map((field) => escapeCsvField(String(field)));
+    ].map((field) => escapeCsvField(String(field), spreadsheetSafe));
   });
   return [header, ...rows].map((row) => row.join(",")).join("\n");
 }

@@ -1,234 +1,196 @@
 import { XMLParser } from "fast-xml-parser";
+import { load } from "cheerio";
+import { createSafeFetcher, publicUrl, type FetchText } from "./safe-fetch";
 import type { BasicAuth, CrawlError, CrawledPage } from "./types";
 
-const DEFAULT_PAGE_LIMIT = 200;
-const DEFAULT_DEPTH_LIMIT = 4;
-const REQUEST_TIMEOUT_MS = 45000;
-const CONCURRENCY = 8;
-
-function authHeaders(auth?: BasicAuth): HeadersInit {
-  if (!auth || (!auth.username && !auth.password)) return {};
-  const token = Buffer.from(`${auth.username ?? ""}:${auth.password ?? ""}`).toString("base64");
-  return { Authorization: `Basic ${token}` };
-}
-
-async function fetchWithTimeout(url: string, auth?: BasicAuth): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+export function parseHtml(html: string, pageUrl: string) {
+  const $ = load(html);
+  const title = $("title").first().text().trim().replace(/\s+/g, " ") || null;
+  const description =
+    $("meta")
+      .filter(
+        (_, el) => ($(el).attr("name") ?? "").toLowerCase() === "description",
+      )
+      .first()
+      .attr("content")
+      ?.trim() ?? null;
+  let documentBase = pageUrl;
   try {
-    return await fetch(url, {
-      headers: { ...authHeaders(auth), "User-Agent": "redirect-mapper/1.0" },
-      signal: controller.signal,
-      redirect: "follow",
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function toAbsoluteUrl(base: string, href: string): string | null {
-  try {
-    const u = new URL(href, base);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
-    u.hash = "";
-    return u.toString();
+    documentBase = new URL(
+      $("base[href]").first().attr("href") ?? pageUrl,
+      pageUrl,
+    ).href;
   } catch {
-    return null;
+    /* ignore invalid base */
   }
-}
-
-function isSameOrigin(base: string, target: string): boolean {
-  try {
-    return new URL(base).origin === new URL(target).origin;
-  } catch {
-    return false;
-  }
-}
-
-function extractInternalLinks(html: string, pageUrl: string): string[] {
   const links = new Set<string>();
-  const hrefRegex = /<a\s+[^>]*href\s*=\s*["']([^"'#]+)["']/gi;
-  let match: RegExpExecArray | null;
-  while ((match = hrefRegex.exec(html)) !== null) {
-    const raw = match[1].trim();
-    if (!raw || raw.startsWith("mailto:") || raw.startsWith("tel:") || raw.startsWith("javascript:")) continue;
-    const abs = toAbsoluteUrl(pageUrl, raw);
-    if (abs && isSameOrigin(pageUrl, abs)) links.add(abs);
-  }
-  return Array.from(links);
-}
-
-function extractTitle(html: string): string | null {
-  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
-  return m ? m[1].trim().replace(/\s+/g, " ") : null;
-}
-
-function extractMetaDescription(html: string): string | null {
-  const m =
-    /<meta\s+[^>]*name\s*=\s*["']description["'][^>]*content\s*=\s*["']([^"']*)["'][^>]*>/i.exec(html) ||
-    /<meta\s+[^>]*content\s*=\s*["']([^"']*)["'][^>]*name\s*=\s*["']description["'][^>]*>/i.exec(html);
-  return m ? m[1].trim() : null;
-}
-
-function pathOf(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname + u.search;
-  } catch {
-    return url;
-  }
-}
-
-async function fetchSitemapUrls(sitemapUrl: string, auth: BasicAuth | undefined, seen: Set<string>): Promise<string[]> {
-  if (seen.has(sitemapUrl)) return [];
-  seen.add(sitemapUrl);
-
-  let res: Response;
-  try {
-    res = await fetchWithTimeout(sitemapUrl, auth);
-  } catch {
-    return [];
-  }
-  if (!res.ok) return [];
-
-  const xml = await res.text();
-  const parser = new XMLParser({ ignoreAttributes: false });
-  let parsed: unknown;
-  try {
-    parsed = parser.parse(xml);
-  } catch {
-    return [];
-  }
-
-  const obj = parsed as Record<string, unknown>;
-
-  if (obj.sitemapindex) {
-    const idx = obj.sitemapindex as Record<string, unknown>;
-    const entries = Array.isArray(idx.sitemap) ? idx.sitemap : idx.sitemap ? [idx.sitemap] : [];
-    const childUrls: string[] = [];
-    for (const entry of entries as Record<string, unknown>[]) {
-      const loc = entry?.loc;
-      if (typeof loc === "string") {
-        const nested = await fetchSitemapUrls(loc, auth, seen);
-        childUrls.push(...nested);
-      }
+  $("a[href]").each((_, el) => {
+    try {
+      const target = new URL($(el).attr("href")!, documentBase);
+      target.hash = "";
+      if (
+        ["http:", "https:"].includes(target.protocol) &&
+        target.origin === new URL(pageUrl).origin
+      )
+        links.add(target.href);
+    } catch {
+      /* ignore malformed links */
     }
-    return childUrls;
-  }
-
-  if (obj.urlset) {
-    const urlset = obj.urlset as Record<string, unknown>;
-    const entries = Array.isArray(urlset.url) ? urlset.url : urlset.url ? [urlset.url] : [];
-    const urls: string[] = [];
-    for (const entry of entries as Record<string, unknown>[]) {
-      const loc = entry?.loc;
-      if (typeof loc === "string") urls.push(loc);
-    }
-    return urls;
-  }
-
-  return [];
+  });
+  return { title, description, links: [...links] };
 }
-
-async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
-  let index = 0;
-  async function next(): Promise<void> {
-    while (index < items.length) {
-      const current = items[index++];
-      await worker(current);
-    }
-  }
-  const workers = Array.from({ length: Math.min(limit, items.length) }, () => next());
-  await Promise.all(workers);
-}
-
-async function fetchPageDetails(
-  url: string,
-  auth: BasicAuth | undefined,
-  pages: CrawledPage[],
-  errors: CrawlError[],
-): Promise<string | null> {
-  try {
-    const res = await fetchWithTimeout(url, auth);
-    if (!res.ok) {
-      errors.push({ url, reason: `HTTP ${res.status}` });
-      pages.push({ url, path: pathOf(url), title: null, description: null, statusCode: res.status });
-      return null;
-    }
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!contentType.includes("text/html")) {
-      pages.push({ url, path: pathOf(url), title: null, description: null, statusCode: res.status });
-      return null;
-    }
-    const html = await res.text();
-    pages.push({
-      url,
-      path: pathOf(url),
-      title: extractTitle(html),
-      description: extractMetaDescription(html),
-      statusCode: res.status,
-    });
-    return html;
-  } catch (err) {
-    const reason = err instanceof Error && err.name === "AbortError" ? "timeout" : "fetch failed";
-    errors.push({ url, reason });
-    pages.push({ url, path: pathOf(url), title: null, description: null, statusCode: 0 });
-    return null;
-  }
-}
-
 export async function crawlSite(
   baseUrl: string,
   auth?: BasicAuth,
-  options?: { pageLimit?: number; depthLimit?: number },
-): Promise<{ pages: CrawledPage[]; errors: CrawlError[] }> {
-  const pageLimit = options?.pageLimit ?? DEFAULT_PAGE_LIMIT;
-  const depthLimit = options?.depthLimit ?? DEFAULT_DEPTH_LIMIT;
-
-  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  options?: {
+    pageLimit?: number;
+    depthLimit?: number;
+    signal?: AbortSignal;
+    fetcher?: FetchText;
+    deadlineMs?: number;
+  },
+): Promise<{ pages: CrawledPage[]; errors: CrawlError[]; warnings: string[] }> {
+  const base = publicUrl(baseUrl);
+  const pageLimit = options?.pageLimit ?? 200;
+  const depthLimit = options?.depthLimit ?? 4;
+  const signal = AbortSignal.any([
+    options?.signal ?? new AbortController().signal,
+    AbortSignal.timeout(options?.deadlineMs ?? 240_000),
+  ]);
+  const fetcher = options?.fetcher ?? createSafeFetcher(base.origin, auth);
   const pages: CrawledPage[] = [];
   const errors: CrawlError[] = [];
-
-  const sitemapUrls = await fetchSitemapUrls(`${normalizedBase}/sitemap.xml`, auth, new Set());
-  const uniqueSitemapUrls = Array.from(new Set(sitemapUrls)).slice(0, pageLimit);
-
-  if (uniqueSitemapUrls.length > 0) {
-    await runWithConcurrency(uniqueSitemapUrls, CONCURRENCY, async (url) => {
-      await fetchPageDetails(url, auth, pages, errors);
-    });
-    return { pages, errors };
-  }
-
-  const visited = new Set<string>();
-  const queue: { url: string; depth: number }[] = [{ url: normalizedBase, depth: 0 }];
-  visited.add(normalizedBase);
-
-  while (queue.length > 0 && pages.length < pageLimit) {
-    const batch = queue.splice(0, CONCURRENCY);
-
-    await runWithConcurrency(batch, CONCURRENCY, async ({ url, depth }) => {
-      if (pages.length >= pageLimit) return;
-      const html = await fetchPageDetails(url, auth, pages, errors);
-      if (!html || depth >= depthLimit) return;
-
-      const links = extractInternalLinks(html, url);
-      for (const link of links) {
-        const normalizedLink = link.endsWith("/") && link !== `${normalizedBase}/` ? link.slice(0, -1) : link;
-        const key = normalizedLink === `${normalizedBase}/` ? normalizedBase : normalizedLink;
-        if (!visited.has(key) && visited.size < pageLimit * 4) {
-          visited.add(key);
-          queue.push({ url: key, depth: depth + 1 });
-        }
-      }
-    });
-  }
-
-  const seenPaths = new Set<string>();
-  const dedupedPages = pages.filter((page) => {
-    if (seenPaths.has(page.path)) return false;
-    seenPaths.add(page.path);
-    return true;
+  const warnings = new Set<string>();
+  const sitemapSeen = new Set<string>();
+  const sitemapPages = new Set<string>();
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    processEntities: true,
+    maxNestedTags: 50,
   });
-
-  return { pages: dedupedPages, errors };
+  async function sitemap(url: string, depth: number): Promise<void> {
+    if (sitemapSeen.has(url)) return;
+    if (depth > 4 || sitemapSeen.size >= 20 || sitemapPages.size >= pageLimit) {
+      warnings.add("Sitemap limits reached; the inventory may be incomplete.");
+      return;
+    }
+    if (new URL(url).origin !== base.origin) {
+      warnings.add("Cross-origin sitemap entries were skipped.");
+      return;
+    }
+    sitemapSeen.add(url);
+    try {
+      signal.throwIfAborted();
+      const response = await fetcher(url, signal);
+      if (response.status >= 400) return;
+      if (/<!DOCTYPE|<!ENTITY/i.test(response.text))
+        throw new Error("Sitemap DTDs are not supported");
+      const parsed = parser.parse(response.text);
+      const entries = (value: unknown): { loc?: unknown }[] =>
+        Array.isArray(value)
+          ? value
+          : value && typeof value === "object"
+            ? [value]
+            : [];
+      for (const item of entries(parsed?.sitemapindex?.sitemap)) {
+        if (typeof item.loc === "string")
+          await sitemap(new URL(item.loc, response.url).href, depth + 1);
+      }
+      for (const item of entries(parsed?.urlset?.url)) {
+        if (typeof item.loc !== "string") continue;
+        const target = publicUrl(new URL(item.loc, response.url).href);
+        if (target.origin !== base.origin) {
+          warnings.add("Cross-origin sitemap entries were skipped.");
+          continue;
+        }
+        if (sitemapPages.size >= pageLimit) {
+          warnings.add(
+            `Page limit (${pageLimit}) reached; the inventory may be incomplete.`,
+          );
+          break;
+        }
+        sitemapPages.add(target.href);
+      }
+    } catch (err) {
+      if (signal.aborted) throw signal.reason;
+      warnings.add(
+        `Sitemap skipped: ${err instanceof Error ? err.message : "request failed"}`,
+      );
+    }
+  }
+  await sitemap(new URL("/sitemap.xml", base).href, 0);
+  const usingSitemap = sitemapPages.size > 0;
+  const queue = (usingSitemap ? [...sitemapPages] : [base.href]).map((url) => ({
+    url,
+    depth: 0,
+  }));
+  const visited = new Set(queue.map((item) => item.url));
+  let processed = 0;
+  const pagePaths = new Set<string>();
+  while (queue.length && processed < pageLimit) {
+    signal.throwIfAborted();
+    const batch = queue.splice(0, Math.min(8, pageLimit - processed));
+    processed += batch.length;
+    const results = await Promise.all(
+      batch.map(async ({ url, depth }) => {
+        const path = new URL(url).pathname + new URL(url).search;
+        try {
+          const response = await fetcher(url, signal);
+          const details =
+            response.contentType.toLowerCase().includes("text/html") &&
+            response.status < 400
+              ? parseHtml(response.text, response.url)
+              : null;
+          if (response.status >= 400)
+            errors.push({ url, reason: `HTTP ${response.status}` });
+          if (details && !usingSitemap) {
+            if (
+              depth >= depthLimit &&
+              details.links.some((link) => !visited.has(link))
+            )
+              warnings.add(
+                `Depth limit (${depthLimit}) reached; the inventory may be incomplete.`,
+              );
+            else if (depth < depthLimit)
+              for (const link of details.links) {
+                if (visited.has(link)) continue;
+                if (visited.size >= pageLimit * 4) {
+                  warnings.add(
+                    "Discovery limit reached; the inventory may be incomplete.",
+                  );
+                  break;
+                }
+                visited.add(link);
+                queue.push({ url: link, depth: depth + 1 });
+              }
+          }
+          return {
+            url,
+            path,
+            title: details?.title ?? null,
+            description: details?.description ?? null,
+            statusCode: response.status,
+          };
+        } catch (err) {
+          if (signal.aborted) throw signal.reason;
+          errors.push({
+            url,
+            reason: err instanceof Error ? err.message : "Request failed",
+          });
+          return { url, path, title: null, description: null, statusCode: 0 };
+        }
+      }),
+    );
+    for (const page of results) {
+      if (!pagePaths.has(page.path)) {
+        pagePaths.add(page.path);
+        pages.push(page);
+      }
+    }
+  }
+  if (queue.length)
+    warnings.add(
+      `Page limit (${pageLimit}) reached; the inventory may be incomplete.`,
+    );
+  return { pages, errors, warnings: [...warnings] };
 }
